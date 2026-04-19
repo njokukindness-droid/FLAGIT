@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="FLAGIT" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <meta name="theme-color" content="#d85a30" />
@@ -1048,7 +1054,14 @@ async function init(){
   });
 }
 
-window.addEventListener('load', init);
+window.addEventListener('load', () => {
+  init();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('FLAGIT SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  }
+});
 </script>
 </body>
 </html>
