@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <meta name="theme-color" content="#d85a30" />
-<title>FLAGIT — HSE Observation Platform</title>
+<title>FLAGIT — HSE Observation Platform</title> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--brand:#d85a30;--brand-dk:#993c1d;--brand-lt:#faece7;--blue:#185fa5;--blue-lt:#e6f1fb;--green:#1a6b2a;--green-lt:#e6f3e8;--red:#8a1a1a;--red-lt:#fdeaea;--amber:#7a5500;--amber-lt:#fff8e1;--purple:#4a1a8a;--purple-lt:#f0e6ff;--border:#e2e4ea;--surface:#fff;--surface2:#f5f6fa;--text:#1a1a2e;--text2:#6b7280;--radius:10px}
@@ -550,6 +551,17 @@ function renderFeed(c){
     <div class="metric"><div class="lbl">Active</div><div class="val">${active}</div></div>
     <div class="metric"><div class="lbl">Critical</div><div class="val">${crit}</div></div>
   </div>`;
+  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+  <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateReport()">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/>
+      <line x1="9" y1="15" x2="15" y2="15"/>
+    </svg>
+    Download Report
+  </button>
+</div>`;
   if(!observations.length) html+=`<div class="card"><div class="small">No observations yet. Tap + to raise the first flag.</div></div>`;
   observations.forEach(o=>{
     html+=`<div class="obs-card" style="border-left-color:${SEVERITY_STYLES[o.severity]?.border||'#ccc'}" onclick="openObservation('${o.id}')">
@@ -829,6 +841,180 @@ function attachRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:`recipient_user_id=eq.${currentUser.id}`},async()=>{await loadNotifications();if(currentView==='notifications')renderContent();})
     .subscribe();
   realtimeChannels.push(obs,notif);
+}
+
+  async function generateReport(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, margin = 16, contentW = W - margin*2;
+  let y = 0;
+
+  // ── HEADER ──────────────────────────────────────────
+  doc.setFillColor(216, 90, 48);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('FLAGIT', margin, 12);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('HSE Observation Platform', margin, 18);
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('HSE Observation Report', W - margin, 12, {align:'right'});
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(`Project: ${currentProject.name}`, W - margin, 18, {align:'right'});
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`, W - margin, 23, {align:'right'});
+
+  y = 36;
+
+  // ── SUMMARY METRICS ──────────────────────────────────
+  doc.setTextColor(26,26,46);
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('Summary', margin, y); y += 6;
+
+  const total = observations.length;
+  const open = observations.filter(o=>o.status==='Open').length;
+  const inprog = observations.filter(o=>o.status==='In Progress').length;
+  const closed = observations.filter(o=>o.status==='Closed').length;
+  const critical = observations.filter(o=>o.severity==='Critical').length;
+  const ncrs = observations.filter(o=>o.is_ncr).length;
+
+  const metrics = [
+    {label:'Total Observations', value:total, color:[26,107,42]},
+    {label:'Open', value:open, color:[138,26,26]},
+    {label:'In Progress', value:inprog, color:[122,85,0]},
+    {label:'Closed', value:closed, color:[24,95,165]},
+    {label:'Critical', value:critical, color:[138,26,26]},
+    {label:'NCRs Raised', value:ncrs, color:[74,26,138]}
+  ];
+
+  const boxW = contentW/3 - 3;
+  metrics.forEach((m,i)=>{
+    const col = i%3;
+    const row = Math.floor(i/3);
+    const x = margin + col*(boxW+4.5);
+    const by = y + row*18;
+    doc.setFillColor(245,246,250);
+    doc.roundedRect(x, by, boxW, 14, 2, 2, 'F');
+    doc.setFontSize(18); doc.setFont('helvetica','bold');
+    doc.setTextColor(...m.color);
+    doc.text(String(m.value), x+boxW/2, by+9, {align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.setTextColor(107,114,128);
+    doc.text(m.label, x+boxW/2, by+13, {align:'center'});
+  });
+
+  y += 44;
+
+  // ── BY CATEGORY ──────────────────────────────────────
+  const cats = [...new Set(observations.map(o=>o.category))];
+  if(cats.length){
+    doc.setTextColor(26,26,46);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text('Observations by Category', margin, y); y += 5;
+    doc.setFillColor(226,228,234);
+    doc.rect(margin, y, contentW, 0.3, 'F'); y += 4;
+
+    cats.forEach(cat=>{
+      const n = observations.filter(o=>o.category===cat).length;
+      const pct = total ? Math.round(n/total*100) : 0;
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.setTextColor(26,26,46);
+      doc.text(cat, margin, y+3);
+      doc.text(`${n} (${pct}%)`, W-margin, y+3, {align:'right'});
+      doc.setFillColor(226,228,234);
+      doc.roundedRect(margin+50, y, contentW-60, 4, 1, 1, 'F');
+      doc.setFillColor(216,90,48);
+      doc.roundedRect(margin+50, y, Math.max((contentW-60)*(pct/100),1), 4, 1, 1, 'F');
+      y += 8;
+    });
+    y += 4;
+  }
+
+  // ── OBSERVATIONS LIST ────────────────────────────────
+  doc.setTextColor(26,26,46);
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('Observation Log', margin, y); y += 5;
+  doc.setFillColor(226,228,234);
+  doc.rect(margin, y, contentW, 0.3, 'F'); y += 5;
+
+  const SEV_COLORS = {
+    Low:[26,107,42], Medium:[122,85,0],
+    High:[138,48,0], Critical:[138,26,26]
+  };
+  const STATUS_COLORS = {
+    'Open':[138,26,26], 'In Progress':[122,85,0],
+    'Pending Verification':[24,95,165], 'Closed':[26,107,42]
+  };
+
+  observations.forEach((obs,idx)=>{
+    const rowH = 28;
+    if(y + rowH > 270){
+      doc.addPage();
+      y = 16;
+      doc.setFillColor(216,90,48);
+      doc.rect(0,0,W,8,'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(7);
+      doc.text(`FLAGIT — ${currentProject.name} (continued)`, margin, 5.5);
+      y = 16;
+    }
+
+    doc.setFillColor(idx%2===0?250:255, idx%2===0?250:255, idx%2===0?250:255);
+    doc.rect(margin, y-3, contentW, rowH, 'F');
+
+    const sevColor = SEV_COLORS[obs.severity]||[107,114,128];
+    const statColor = STATUS_COLORS[obs.status]||[107,114,128];
+
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.setTextColor(26,26,46);
+    doc.text(`${obs.category} — ${obs.location||'No location'}`, margin, y+2);
+
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.setTextColor(...sevColor);
+    doc.text(`[${obs.severity}]`, margin+100, y+2);
+    doc.setTextColor(...statColor);
+    doc.text(`[${obs.status}]`, margin+120, y+2);
+    if(obs.is_ncr){
+      doc.setTextColor(74,26,138);
+      doc.text('[NCR]', margin+148, y+2);
+    }
+
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+    doc.setTextColor(26,26,46);
+    const descLines = doc.splitTextToSize(obs.description||'', contentW);
+    doc.text(descLines.slice(0,2), margin, y+8);
+
+    if(obs.recommendation){
+      doc.setTextColor(107,114,128);
+      doc.setFontSize(7);
+      const recLines = doc.splitTextToSize(`Action: ${obs.recommendation}`, contentW);
+      doc.text(recLines.slice(0,1), margin, y+16);
+    }
+
+    doc.setTextColor(150,150,150);
+    doc.setFontSize(6.5);
+    doc.text(`Reporter: ${obs.reporter_name||''}  |  Responsible: ${obs.responsible_person||'-'}  |  ${new Date(obs.created_at).toLocaleDateString('en-GB')}`, margin, y+22);
+
+    doc.setFillColor(226,228,234);
+    doc.rect(margin, y+rowH-4, contentW, 0.2, 'F');
+    y += rowH;
+  });
+
+  // ── FOOTER ───────────────────────────────────────────
+  const pages = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setFillColor(245,246,250);
+    doc.rect(0,285,W,12,'F');
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.setTextColor(107,114,128);
+    doc.text('FLAGIT — HSE Observation Platform | getflagit.com', margin, 291);
+    doc.text(`Page ${i} of ${pages}`, W-margin, 291, {align:'right'});
+    doc.text('CONFIDENTIAL', W/2, 291, {align:'center'});
+  }
+
+  // ── SAVE ─────────────────────────────────────────────
+  const filename = `FLAGIT_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(filename);
 }
 
 async function signOut(){
