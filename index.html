@@ -519,9 +519,24 @@ async function startApp(projectId){
 
 function renderTopBar(){
   document.getElementById('top-project-pill').textContent = currentProject?.name || 'No project';
-  document.getElementById('user-badge').innerHTML = `${avatarHTML(currentProject?.full_name||currentUser?.email||'U')}<div style="line-height:1.2"><div style="font-size:12px;font-weight:700">${esc(currentProject?.full_name||currentUser?.email||'')}</div><div style="font-size:11px;color:var(--text2)">${esc(currentProject?.role_title||'Team member')}</div></div>`;
+  document.getElementById('user-badge').innerHTML = `
+    ${avatarHTML(currentProject?.full_name||currentUser?.email||'U')}
+    <div style="line-height:1.2">
+      <div style="font-size:12px;font-weight:700">${esc(currentProject?.full_name||currentUser?.email||'')}</div>
+      <div style="font-size:11px;color:var(--text2)">${esc(currentProject?.role_title||'Team member')}</div>
+    </div>`;
+
   const installBtn = document.getElementById('install-flagit-btn');
   if(installBtn && deferredPrompt) installBtn.classList.remove('hidden');
+
+  // ── PROJECT SWITCHER ──
+  const pill = document.getElementById('top-project-pill');
+  if(myProjects.length > 1){
+    pill.style.cursor = 'pointer';
+    pill.onclick = toggleProjectSwitcher;
+    pill.title = 'Click to switch project';
+    pill.innerHTML = `${esc(currentProject?.name||'No project')} ▾`;
+  }
 }
 
 async function refreshAll(){
@@ -1166,6 +1181,87 @@ async function skipCloseoutPhoto(){
   await refreshAll();
   selectedObservation = observations.find(o=>o.id===obsId)||null;
   renderContent();
+}
+// ── PROJECT SWITCHER ─────────────────────────────────
+function toggleProjectSwitcher(){
+  let existing = document.getElementById('project-switcher-dropdown');
+  if(existing){ existing.remove(); return; }
+
+  const pill = document.getElementById('top-project-pill');
+  const rect = pill.getBoundingClientRect();
+
+  const dropdown = document.createElement('div');
+  dropdown.id = 'project-switcher-dropdown';
+  dropdown.style.cssText = `
+    position:fixed;
+    top:${rect.bottom + 6}px;
+    left:${rect.left}px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.12);
+    z-index:999;
+    min-width:200px;
+    overflow:hidden;
+  `;
+
+  dropdown.innerHTML = `
+    <div style="padding:8px 12px;font-size:11px;color:var(--text2);
+    text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">
+      Switch project
+    </div>
+    ${myProjects.map(p=>`
+      <div onclick="switchProject('${p.id}')" style="
+        padding:12px 16px;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        font-size:14px;
+        background:${p.id===currentProject.id?'var(--brand-lt)':'var(--surface)'};
+        color:${p.id===currentProject.id?'var(--brand-dk)':'var(--text)'};
+        border-bottom:1px solid var(--border)
+      ">
+        <div style="width:8px;height:8px;border-radius:50%;
+        background:${p.id===currentProject.id?'var(--brand)':'var(--border)'}"></div>
+        <div>
+          <div style="font-weight:600">${esc(p.name)}</div>
+          <div style="font-size:11px;color:var(--text2)">${esc(p.role_title||'Member')}</div>
+        </div>
+        ${p.id===currentProject.id?'<span style="margin-left:auto;font-size:11px;color:var(--brand)">Active</span>':''}
+      </div>
+    `).join('')}
+  `;
+
+  document.body.appendChild(dropdown);
+
+  // Close when clicking outside
+  setTimeout(()=>{
+    document.addEventListener('click', function handler(e){
+      if(!dropdown.contains(e.target) && e.target.id !== 'top-project-pill'){
+        dropdown.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 100);
+}
+
+async function switchProject(projectId){
+  const dropdown = document.getElementById('project-switcher-dropdown');
+  if(dropdown) dropdown.remove();
+
+  if(projectId === currentProject.id) return;
+
+  currentProject = myProjects.find(p=>p.id===projectId) || currentProject;
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`, currentProject.id);
+
+  // Detach old realtime channels
+  realtimeChannels.forEach(ch=>db.removeChannel(ch));
+  realtimeChannels=[];
+
+  renderTopBar();
+  await refreshAll();
+  attachRealtime();
 }
 
 async function signOut(){
