@@ -216,6 +216,29 @@ button{cursor:pointer}
   <div class="close-x" onclick="closePhotoViewer(event)">&times;</div>
   <img id="photo-viewer-img" src="" alt="Observation photo" />
 </div>
+<!-- CLOSEOUT PHOTO MODAL -->
+<div class="modal-overlay" id="closeout-modal" onclick="closeCloseoutModalBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--green-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+        <svg width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="font-size:17px;font-weight:700;color:var(--green)">Observation Closed Out</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">Add a close-out photo to show corrective action taken</div>
+    </div>
+    <div id="closeout-err" class="error-box"></div>
+    <div id="closeout-photo-preview" class="photo-grid" style="margin-bottom:12px"></div>
+    <div class="upload-actions">
+      <label class="upload-chip">Upload photo <input type="file" id="closeout-photos-device" accept="image/*" multiple style="display:none" onchange="previewCloseoutPhotos(this)" /></label>
+      <label class="upload-chip">Use camera <input type="file" id="closeout-photos-camera" accept="image/*" capture="environment" style="display:none" onchange="previewCloseoutPhotos(this)" /></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="skipCloseoutPhoto()">Skip — no photo needed</button>
+      <button class="btn btn-green" style="flex:2" id="save-closeout-btn" onclick="saveCloseoutPhoto()">Save close-out photo</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -794,6 +817,10 @@ async function updateStatus(id, status){
       patch.closeout_action=action.trim();
       patch.closed_out_at=new Date().toISOString();
       patch.closed_out_by=currentUser.id;
+      const { error }=await db.from('observations').update(patch).eq('id',id);
+      if(error) throw error;
+      showCloseoutPhotoModal(id);
+      return;
     }
     const { error }=await db.from('observations').update(patch).eq('id',id);
     if(error) throw error;
@@ -803,7 +830,6 @@ async function updateStatus(id, status){
     renderContent();
   }catch(err){ alert(err.message||'Could not update status.'); }
 }
-
 async function addComment(observationId){
   const inp=document.getElementById('detail-comment');
   const body=inp.value.trim(); if(!body) return;
@@ -1046,6 +1072,100 @@ async function installApp(){
   const { outcome } = await deferredPrompt.userChoice;
   console.log('Install outcome:', outcome);
   deferredPrompt = null;
+}
+
+// ── CLOSEOUT PHOTO ───────────────────────────────────
+let closeoutObsId = null;
+let closeoutPhotos = [];
+
+function showCloseoutPhotoModal(obsId){
+  closeoutObsId = obsId;
+  closeoutPhotos = [];
+  renderCloseoutPhotoPreview();
+  hideBox('closeout-err');
+  document.getElementById('closeout-modal').style.display = 'flex';
+}
+
+function closeCloseoutModal(){
+  document.getElementById('closeout-modal').style.display = 'none';
+  closeoutObsId = null;
+  closeoutPhotos = [];
+}
+
+function closeCloseoutModalBg(e){
+  if(e.target.id === 'closeout-modal') closeCloseoutModal();
+}
+
+function previewCloseoutPhotos(input){
+  Array.from(input.files||[]).forEach(f => closeoutPhotos.push(f));
+  renderCloseoutPhotoPreview();
+  input.value = '';
+}
+
+function renderCloseoutPhotoPreview(){
+  const g = document.getElementById('closeout-photo-preview');
+  if(!g) return;
+  g.innerHTML = '';
+  closeoutPhotos.forEach((f,i)=>{
+    const url = URL.createObjectURL(f);
+    g.innerHTML += `<img class="photo-thumb" src="${url}" onclick="removeCloseoutPhoto(${i})" title="Tap to remove" />`;
+  });
+}
+
+function removeCloseoutPhoto(i){
+  closeoutPhotos.splice(i,1);
+  renderCloseoutPhotoPreview();
+}
+
+async function saveCloseoutPhoto(){
+  if(!closeoutPhotos.length) return skipCloseoutPhoto();
+  const btn = document.getElementById('save-closeout-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try{
+    for(const file of closeoutPhotos){
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path = `${currentProject.id}/${closeoutObsId}/closeout_${Date.now()}_${safe}`;
+      const up = await db.storage.from(STORAGE_BUCKET).upload(path, file, {
+        upsert:false, contentType:file.type||'image/jpeg'
+      });
+      if(up.error) throw up.error;
+      await db.from('observation_photos').insert({
+        project_id: currentProject.id,
+        observation_id: closeoutObsId,
+        file_path: path,
+        file_name: `CLOSEOUT_${file.name}`,
+        created_by: currentUser.id
+      });
+    }
+    await notify(
+      'Observation closed out with photo evidence',
+      `${currentProject.full_name||currentUser.email} closed out an observation with photo evidence.`,
+      closeoutObsId
+    );
+    closeCloseoutModal();
+    await refreshAll();
+    selectedObservation = observations.find(o=>o.id===closeoutObsId)||null;
+    renderContent();
+  }catch(err){
+    showError('closeout-err', err.message||'Could not save photo.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Save close-out photo';
+  }
+}
+
+async function skipCloseoutPhoto(){
+  const obsId = closeoutObsId;
+  await notify(
+    'Observation closed out',
+    `${currentProject.full_name||currentUser.email} closed out an observation.`,
+    obsId
+  );
+  closeCloseoutModal();
+  await refreshAll();
+  selectedObservation = observations.find(o=>o.id===obsId)||null;
+  renderContent();
 }
 
 async function signOut(){
