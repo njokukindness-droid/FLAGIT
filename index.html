@@ -512,7 +512,6 @@ const { data: invite } = await db
   .from('invites')
   .select('*')
   .eq('email', currentUser.email.toLowerCase())
-  .eq('status', 'pending')
   .maybeSingle();
 
 if(!invite){
