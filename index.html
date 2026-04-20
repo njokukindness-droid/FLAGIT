@@ -507,6 +507,44 @@ async function hydrateUserAndProjects(){
 
 async function startApp(projectId){
   await hydrateUserAndProjects();
+  // ── INVITE‑ONLY ACCESS CHECK ───────────────────────────────
+const { data: invite, error: inviteErr } = await db
+  .from('invites')
+  .select('*')
+  .eq('email', currentUser.email)
+  .single();
+
+if(inviteErr || !invite){
+  // User is NOT invited → block access
+  alert("Access denied. You must be invited to use FLAGIT.");
+  await db.auth.signOut();
+  document.getElementById('app-shell').classList.remove('active');
+  document.getElementById('screen-auth').classList.add('active');
+  return;
+}
+
+// If invited, auto‑assign them to the project if not already a member
+const { data: membership } = await db
+  .from('project_members')
+  .select('*')
+  .eq('project_id', invite.project_id)
+  .eq('user_id', currentUser.id)
+  .maybeSingle();
+
+if(!membership){
+  await db.from('project_members').insert({
+    project_id: invite.project_id,
+    user_id: currentUser.id,
+    role_title: invite.role
+  });
+}
+
+// Mark invite as accepted
+await db
+  .from('invites')
+  .update({ status: 'accepted' })
+  .eq('id', invite.id);
+
   if(!myProjects.length) throw new Error('No project membership found.');
   const last = projectId || localStorage.getItem(`flagit:lastProject:${currentUser.id}`) || myProjects[0].id;
   currentProject = myProjects.find(p=>p.id===last) || myProjects[0];
