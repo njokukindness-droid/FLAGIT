@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="/manifest.json" />
+<link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -10,7 +10,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <meta name="theme-color" content="#d85a30" />
-<title>FLAGIT — HSE Observation Platform</title> 
+<title>FLAGIT — HSE Observation Platform</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -26,6 +26,7 @@ button{cursor:pointer}
 .btn-brand{background:var(--brand);color:#fff}.btn-brand:disabled{opacity:.55;cursor:not-allowed}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
 .btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red-lt);color:var(--red);border:1px solid #f5c5c5}
 .field-label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
 .error-box{font-size:13px;color:var(--red);background:var(--red-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
 .success-box{font-size:13px;color:var(--green);background:var(--green-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
@@ -41,6 +42,7 @@ button{cursor:pointer}
 .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px}.metric .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}.metric .val{font-size:24px;font-weight:700}
 .obs-card{background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer}
 .badge{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;white-space:nowrap}
+.admin-badge{font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;background:#fff3e0;color:#e65100;border:1px solid #ffcc02;white-space:nowrap}
 .section-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .tag-box{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:10px}
 .comments .row{display:flex;gap:8px;margin-bottom:12px}.bubble{flex:1;background:var(--surface2);border-radius:8px;padding:8px 10px}
@@ -58,6 +60,9 @@ button{cursor:pointer}
 .photo-viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:120;align-items:center;justify-content:center;padding:18px}
 .photo-viewer img{max-width:96vw;max-height:82vh;border-radius:10px}
 .photo-viewer .close-x{position:absolute;top:16px;right:18px;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);color:#fff;font-size:28px;cursor:pointer}
+.member-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.member-row:last-child{border-bottom:none}
+.invite-row{display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px}
 @media(max-width:700px){.metric-grid{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
 </style>
 </head>
@@ -75,8 +80,6 @@ button{cursor:pointer}
       <div class="card">
         <div id="auth-err" class="error-box"></div>
         <div id="auth-ok" class="success-box"></div>
-
-        <!-- SIGN IN FORM -->
         <div id="form-signin">
           <div style="font-size:16px;font-weight:700;margin-bottom:14px">Sign in</div>
           <label class="field-label">Project name</label>
@@ -86,8 +89,6 @@ button{cursor:pointer}
           <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
           <div style="text-align:center;font-size:13px;color:var(--text2)">New user? <span onclick="toggleForm('signup')" style="color:var(--brand);cursor:pointer;font-weight:600">Create account</span></div>
         </div>
-
-        <!-- SIGN UP FORM -->
         <div id="form-signup" style="display:none">
           <div style="font-size:16px;font-weight:700;margin-bottom:14px">Create account</div>
           <label class="field-label">Project / Organisation name</label>
@@ -101,7 +102,6 @@ button{cursor:pointer}
           <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="signup-btn" onclick="startSignUp()">Sign up &amp; send code</button>
           <div style="text-align:center;font-size:13px;color:var(--text2)">Already registered? <span onclick="toggleForm('signin')" style="color:var(--brand);cursor:pointer;font-weight:600">Sign in</span></div>
         </div>
-
         <div class="note" style="margin-top:14px">Team members in the same project share the same project data. Each organisation's data is completely separate.</div>
       </div>
     </div>
@@ -158,6 +158,7 @@ button{cursor:pointer}
     <button class="active" id="nav-feed" onclick="setView('feed')">Feed</button>
     <button id="nav-dashboard" onclick="setView('dashboard')">Dashboard</button>
     <button id="nav-notifications" onclick="setView('notifications')">Alerts</button>
+    <button id="nav-members" onclick="setView('members')">Team</button>
   </div>
 </div>
 
@@ -168,31 +169,14 @@ button{cursor:pointer}
     <div class="header-row"><div style="font-size:18px;font-weight:700" id="obs-modal-title">New observation</div></div>
     <div id="obs-err" class="error-box"></div>
     <div class="two-col">
-      <div>
-        <label class="field-label">Category</label>
-        <select id="f-cat" style="margin-bottom:12px">
-          <option>PPE</option><option>Fire Safety</option><option>Housekeeping</option><option>Electrical</option><option>Working at Height</option><option>Chemical Handling</option><option>Machinery</option><option>Environmental</option><option>Other</option>
-        </select>
+      <div><label class="field-label">Category</label>
+        <select id="f-cat" style="margin-bottom:12px"><option>PPE</option><option>Fire Safety</option><option>Housekeeping</option><option>Electrical</option><option>Working at Height</option><option>Chemical Handling</option><option>Machinery</option><option>Environmental</option><option>Other</option></select>
       </div>
-      <div>
-        <label class="field-label">Location</label>
-        <input type="text" id="f-loc" placeholder="e.g. Zone A or describe" style="margin-bottom:12px" />
-      </div>
-      <div>
-        <label class="field-label">Severity</label>
-        <select id="f-sev" style="margin-bottom:12px"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select>
-      </div>
-      <div>
-        <label class="field-label">Responsible person</label>
-        <input type="text" id="f-responsible" placeholder="Enter name" style="margin-bottom:12px" />
-      </div>
-      <div>
-        <label class="field-label">Close-out timeframe</label>
-        <select id="f-time" style="margin-bottom:12px"><option>Immediate</option><option>Same Day</option><option>4 Hours</option><option>24 Hours</option><option>3 Days</option><option>1 Week</option></select>
-      </div>
-      <div style="display:flex;align-items:flex-end;padding-bottom:12px">
-        <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="f-ncr" /> Raise NCR</label>
-      </div>
+      <div><label class="field-label">Location</label><input type="text" id="f-loc" placeholder="e.g. Zone A or describe" style="margin-bottom:12px" /></div>
+      <div><label class="field-label">Severity</label><select id="f-sev" style="margin-bottom:12px"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+      <div><label class="field-label">Responsible person</label><input type="text" id="f-responsible" placeholder="Enter name" style="margin-bottom:12px" /></div>
+      <div><label class="field-label">Close-out timeframe</label><select id="f-time" style="margin-bottom:12px"><option>Immediate</option><option>Same Day</option><option>4 Hours</option><option>24 Hours</option><option>3 Days</option><option>1 Week</option></select></div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:12px"><label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="f-ncr" /> Raise NCR</label></div>
     </div>
     <label class="field-label">What did you observe?</label>
     <textarea id="f-desc" rows="3" placeholder="Describe the hazard or non-conformance..." style="resize:none;margin-bottom:12px"></textarea>
@@ -216,14 +200,13 @@ button{cursor:pointer}
   <div class="close-x" onclick="closePhotoViewer(event)">&times;</div>
   <img id="photo-viewer-img" src="" alt="Observation photo" />
 </div>
+
 <!-- CLOSEOUT PHOTO MODAL -->
 <div class="modal-overlay" id="closeout-modal" onclick="closeCloseoutModalBg(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <div style="text-align:center;margin-bottom:16px">
-      <div style="width:48px;height:48px;border-radius:50%;background:var(--green-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
-        <svg width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--green-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><svg width="24" height="24" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div style="font-size:17px;font-weight:700;color:var(--green)">Observation Closed Out</div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px">Add a close-out photo to show corrective action taken</div>
     </div>
@@ -240,13 +223,30 @@ button{cursor:pointer}
   </div>
 </div>
 
+<!-- INVITE MODAL (admin only) -->
+<div class="modal-overlay" id="invite-modal" onclick="closeInviteModalBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:16px">Invite team member</div>
+    <div id="invite-err" class="error-box"></div>
+    <div id="invite-ok" class="success-box"></div>
+    <label class="field-label">Email address</label>
+    <input type="email" id="invite-email" placeholder="colleague@company.com" style="margin-bottom:12px" />
+    <label class="field-label">Role / Job title</label>
+    <input type="text" id="invite-role" placeholder="e.g. HSE Officer" style="margin-bottom:16px" />
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeInviteModal()">Cancel</button>
+      <button class="btn btn-brand" style="flex:2" id="send-invite-btn" onclick="sendInvite()">Send invite</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ── CONFIG — replace with your real values ──────────────────
+// ── CONFIG ──────────────────────────────────────────
 const SUPABASE_URL = 'https://ighaahpdqkexayeleczd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HwEY1zGWH0g0FFhNQ-185g_C71Q_KET';
 const STORAGE_BUCKET = 'observation-photos';
-// ────────────────────────────────────────────────────────────
 
 const SEVERITY_STYLES = {
   Low:{bg:'#e6f3e8',text:'#1a6b2a',border:'#7bbf8a'},
@@ -261,272 +261,184 @@ const STATUS_STYLES = {
   'Closed':{bg:'#e6f3e8',text:'#1a6b2a'}
 };
 
-// Single db variable — no conflict with window.supabase
-let db = null;
-let authMode = 'signin';
-let pendingAuth = null;
-let currentUser = null;
-let myProjects = [];
-let currentProject = null;
-let observations = [];
-let notifications = [];
-let currentView = 'feed';
-let selectedObservation = null;
-let realtimeChannels = [];
-let obsPhotos = [];
-let editingObservationId = null;
-const signedUrlCache = new Map();
+let db=null, authMode='signin', pendingAuth=null, currentUser=null;
+let myProjects=[], currentProject=null, observations=[], notifications=[];
+let currentView='feed', selectedObservation=null, realtimeChannels=[];
+let obsPhotos=[], editingObservationId=null;
+let closeoutObsId=null, closeoutPhotos=[];
+let deferredPrompt=null;
+const signedUrlCache=new Map();
 
-// ── INIT ────────────────────────────────────────────────────
+// ── PERMISSION HELPERS ──────────────────────────────
+function isAdmin(){ return currentProject?.is_admin === true; }
+function canEditObs(obs){ return isAdmin() || obs.created_by === currentUser?.id; }
+function canDeleteObs(obs){ return isAdmin(); }
+
+// ── INIT ────────────────────────────────────────────
 function initDb(){
-  try {
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}
-    });
-  } catch(e) {
-    console.error('Supabase init failed:', e.message);
-  }
+  try{ db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); }
+  catch(e){ console.error('Supabase init failed:',e.message); }
 }
 
-// ── HELPERS ─────────────────────────────────────────────────
-function showError(id, text){ const el=document.getElementById(id); if(!el) return; el.textContent=text; el.style.display='block'; }
-function showSuccess(id, text){ const el=document.getElementById(id); if(!el) return; el.textContent=text; el.style.display='block'; }
-function hideBox(id){ const el=document.getElementById(id); if(!el) return; el.style.display='none'; el.textContent=''; }
-function avatarHTML(name='U'){ const i=(name||'U').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(); return `<div class="avatar">${i}</div>`; }
-function badge(label, s){ return `<span class="badge" style="background:${s.bg};color:${s.text};border:1px solid ${s.border||s.bg}">${label}</span>`; }
-function formatDate(ts){ if(!ts) return ''; return new Date(ts).toLocaleString(); }
+// ── HELPERS ─────────────────────────────────────────
+function showError(id,text){ const el=document.getElementById(id); if(!el)return; el.textContent=text; el.style.display='block'; }
+function showSuccess(id,text){ const el=document.getElementById(id); if(!el)return; el.textContent=text; el.style.display='block'; }
+function hideBox(id){ const el=document.getElementById(id); if(!el)return; el.style.display='none'; el.textContent=''; }
+function avatarHTML(name='U',size=34){ const i=(name||'U').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(); return `<div class="avatar" style="width:${size}px;height:${size}px;font-size:${size*0.38}px">${i}</div>`; }
+function badge(label,s){ return `<span class="badge" style="background:${s.bg};color:${s.text};border:1px solid ${s.border||s.bg}">${label}</span>`; }
+function formatDate(ts){ if(!ts)return''; return new Date(ts).toLocaleString(); }
 function slugify(name){ return String(name||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80); }
 function esc(str=''){ return str.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function setAuthBusy(busy,btnId,label,busyLabel){ const btn=document.getElementById(btnId); if(!btn)return; btn.disabled=busy; btn.textContent=busy?busyLabel:label; }
 
-function setAuthBusy(busy, btnId, label, busyLabel){
-  const btn = document.getElementById(btnId);
-  if(!btn) return;
-  btn.disabled = busy;
-  btn.textContent = busy ? busyLabel : label;
-}
+// ── FORM TOGGLE ─────────────────────────────────────
+function toggleForm(mode){ authMode=mode; hideBox('auth-err'); hideBox('auth-ok'); document.getElementById('form-signin').style.display=mode==='signin'?'block':'none'; document.getElementById('form-signup').style.display=mode==='signup'?'block':'none'; }
 
-// ── FORM TOGGLE ─────────────────────────────────────────────
-function toggleForm(mode){
-  authMode = mode;
-  hideBox('auth-err'); hideBox('auth-ok');
-  document.getElementById('form-signin').style.display = mode==='signin' ? 'block' : 'none';
-  document.getElementById('form-signup').style.display = mode==='signup' ? 'block' : 'none';
-}
+function showAuth(){ document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-auth').classList.add('active'); }
+function showVerify(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
+function showApp(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.remove('active'); document.getElementById('app-shell').classList.add('active'); }
 
-// ── AUTH SCREENS ─────────────────────────────────────────────
-function showAuth(){
-  document.getElementById('screen-verify').classList.remove('active');
-  document.getElementById('screen-auth').classList.add('active');
-}
-function showVerify(){
-  document.getElementById('screen-auth').classList.remove('active');
-  document.getElementById('screen-verify').classList.add('active');
-}
-function showApp(){
-  document.getElementById('screen-auth').classList.remove('active');
-  document.getElementById('screen-verify').classList.remove('active');
-  document.getElementById('app-shell').classList.add('active');
-}
-
-// ── SIGN IN ──────────────────────────────────────────────────
+// ── SIGN IN ──────────────────────────────────────────
 async function startSignIn(){
   hideBox('auth-err'); hideBox('auth-ok');
-  if(!db) return showError('auth-err', 'Connection error. Please refresh the page.');
-  const projectName = document.getElementById('si-project').value.trim();
-  const email = document.getElementById('si-email').value.trim().toLowerCase();
-  if(!projectName) return showError('auth-err', 'Please enter your project name.');
-  if(!email) return showError('auth-err', 'Please enter your email address.');
-  authMode = 'signin';
-  setAuthBusy(true, 'signin-btn', 'Sign in with code', 'Sending...');
-  try {
-    const { error } = await db.auth.signInWithOtp({
-      email,
-      options:{ shouldCreateUser: false }
-    });
+  if(!db) return showError('auth-err','Connection error. Please refresh.');
+  const projectName=document.getElementById('si-project').value.trim();
+  const email=document.getElementById('si-email').value.trim().toLowerCase();
+  if(!projectName) return showError('auth-err','Please enter your project name.');
+  if(!email) return showError('auth-err','Please enter your email address.');
+  authMode='signin';
+  setAuthBusy(true,'signin-btn','Sign in with code','Sending...');
+  try{
+    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
     if(error) throw error;
-    pendingAuth = { email, projectName, fullName: '', roleTitle: '', mode: 'signin' };
-    document.getElementById('verify-sub').textContent = `Enter the 6-digit code sent to ${email}`;
+    pendingAuth={email,projectName,fullName:'',roleTitle:'',mode:'signin'};
+    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
     for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
     showVerify();
-    showSuccess('verify-ok', 'Code sent! Check your inbox and spam folder.');
-  } catch(err) {
-    showError('auth-err', err.message || 'Could not send code. Check your email and try again.');
-  } finally {
-    setAuthBusy(false, 'signin-btn', 'Sign in with code', 'Sending...');
-  }
+    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
+  }catch(err){ showError('auth-err',err.message||'Could not send code.'); }
+  finally{ setAuthBusy(false,'signin-btn','Sign in with code','Sending...'); }
 }
 
-// ── SIGN UP ──────────────────────────────────────────────────
+// ── SIGN UP ──────────────────────────────────────────
 async function startSignUp(){
   hideBox('auth-err'); hideBox('auth-ok');
-  if(!db) return showError('auth-err', 'Connection error. Please refresh the page.');
-  const projectName = document.getElementById('su-project').value.trim();
-  const email = document.getElementById('su-email').value.trim().toLowerCase();
-  const fullName = document.getElementById('su-name').value.trim();
-  const roleTitle = document.getElementById('su-role').value.trim();
-  if(!projectName) return showError('auth-err', 'Please enter your project / organisation name.');
-  if(!email) return showError('auth-err', 'Please enter your email address.');
-  if(!fullName) return showError('auth-err', 'Please enter your full name.');
-  if(!roleTitle) return showError('auth-err', 'Please enter your role.');
-  authMode = 'signup';
-  setAuthBusy(true, 'signup-btn', 'Sign up & send code', 'Sending...');
-  try {
-    const { error } = await db.auth.signInWithOtp({
-      email,
-      options:{
-        shouldCreateUser: true,
-        data:{ full_name: fullName, role_title: roleTitle, pending_project_name: projectName }
-      }
-    });
+  if(!db) return showError('auth-err','Connection error. Please refresh.');
+  const projectName=document.getElementById('su-project').value.trim();
+  const email=document.getElementById('su-email').value.trim().toLowerCase();
+  const fullName=document.getElementById('su-name').value.trim();
+  const roleTitle=document.getElementById('su-role').value.trim();
+  if(!projectName) return showError('auth-err','Please enter your project / organisation name.');
+  if(!email) return showError('auth-err','Please enter your email address.');
+  if(!fullName) return showError('auth-err','Please enter your full name.');
+  if(!roleTitle) return showError('auth-err','Please enter your role.');
+  authMode='signup';
+  setAuthBusy(true,'signup-btn','Sign up & send code','Sending...');
+  try{
+    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName}}});
     if(error) throw error;
-    pendingAuth = { email, projectName, fullName, roleTitle, mode: 'signup' };
-    document.getElementById('verify-sub').textContent = `Enter the 6-digit code sent to ${email}`;
+    pendingAuth={email,projectName,fullName,roleTitle,mode:'signup'};
+    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
     for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
     showVerify();
-    showSuccess('verify-ok', 'Code sent! Check your inbox and spam folder.');
-  } catch(err) {
-    showError('auth-err', err.message || 'Could not create account. Please try again.');
-  } finally {
-    setAuthBusy(false, 'signup-btn', 'Sign up & send code', 'Sending...');
-  }
+    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
+  }catch(err){ showError('auth-err',err.message||'Could not create account.'); }
+  finally{ setAuthBusy(false,'signup-btn','Sign up & send code','Sending...'); }
 }
 
-// ── OTP ──────────────────────────────────────────────────────
-function otpInput(i, el){ el.value=el.value.replace(/\D/g,''); if(el.value&&i<5) document.getElementById('otp'+(i+1)).focus(); }
-function otpKey(i, e){ if(e.key==='Backspace'&&!document.getElementById('otp'+i).value&&i>0) document.getElementById('otp'+(i-1)).focus(); }
-function otpValue(){
-  let v = '';
-  let i = 0;
-  while(document.getElementById('otp' + i)){
-    v += document.getElementById('otp' + i).value;
-    i++;
-  }
-  return v;
-}
+// ── OTP ──────────────────────────────────────────────
+function otpInput(i,el){ el.value=el.value.replace(/\D/g,''); if(el.value&&i<5) document.getElementById('otp'+(i+1)).focus(); }
+function otpKey(i,e){ if(e.key==='Backspace'&&!document.getElementById('otp'+i).value&&i>0) document.getElementById('otp'+(i-1)).focus(); }
+function otpValue(){ let v='',i=0; while(document.getElementById('otp'+i)){ v+=document.getElementById('otp'+i).value; i++; } return v; }
 
 async function verifyOtpAndEnter(){
   hideBox('verify-err'); hideBox('verify-ok');
-  if(!db) return showError('verify-err', 'Connection error. Please refresh.');
-  if(!pendingAuth) return showError('verify-err', 'Session expired. Go back and request a new code.');
-  const token = otpValue();
-  if(token.length < 6) return showError('verify-err', 'Please enter the full verification code.');
-  try {
-    const { error } = await db.auth.verifyOtp({ email: pendingAuth.email, token, type:'email' });
+  if(!db) return showError('verify-err','Connection error.');
+  if(!pendingAuth) return showError('verify-err','Session expired. Go back and request a new code.');
+  const token=otpValue();
+  if(token.length<6) return showError('verify-err','Please enter the full verification code.');
+  try{
+    const {error}=await db.auth.verifyOtp({email:pendingAuth.email,token,type:'email'});
     if(error) throw error;
     await postVerifyBootstrap();
-  } catch(err) {
-    showError('verify-err', err.message || 'Verification failed. Please try again.');
-  }
+  }catch(err){ showError('verify-err',err.message||'Verification failed.'); }
 }
 
 async function resendOtp(){
   hideBox('verify-err'); hideBox('verify-ok');
-  if(!db||!pendingAuth) return showError('verify-err', 'Go back and start again.');
-  try {
-    const { error } = await db.auth.signInWithOtp({
-      email: pendingAuth.email,
-      options:{
-        shouldCreateUser: pendingAuth.mode==='signup',
-        data: pendingAuth.mode==='signup' ? { full_name: pendingAuth.fullName, role_title: pendingAuth.roleTitle, pending_project_name: pendingAuth.projectName } : {}
-      }
-    });
+  if(!db||!pendingAuth) return showError('verify-err','Go back and start again.');
+  try{
+    const {error}=await db.auth.signInWithOtp({email:pendingAuth.email,options:{shouldCreateUser:pendingAuth.mode==='signup',data:pendingAuth.mode==='signup'?{full_name:pendingAuth.fullName,role_title:pendingAuth.roleTitle,pending_project_name:pendingAuth.projectName}:{}}});
     if(error) throw error;
-    showSuccess('verify-ok', 'A new code has been sent to your email.');
-  } catch(err) { showError('verify-err', err.message || 'Could not resend code.'); }
+    showSuccess('verify-ok','A new code has been sent to your email.');
+  }catch(err){ showError('verify-err',err.message||'Could not resend code.'); }
 }
 
-// ── POST VERIFY BOOTSTRAP ────────────────────────────────────
+// ── BOOTSTRAP ────────────────────────────────────────
 async function postVerifyBootstrap(){
-  const { data:{ user }, error:userErr } = await db.auth.getUser();
+  const {data:{user},error:userErr}=await db.auth.getUser();
   if(userErr||!user) throw userErr||new Error('No signed-in user found.');
-  currentUser = user;
-  const fullName = pendingAuth?.fullName || user.user_metadata?.full_name || user.email;
-  const roleTitle = pendingAuth?.roleTitle || user.user_metadata?.role_title || 'Team member';
-  const projectName = pendingAuth?.projectName || user.user_metadata?.pending_project_name || '';
-
-  await db.from('profiles').upsert({
-    id: user.id, email: user.email,
-    full_name: fullName, role_title: roleTitle,
-    updated_at: new Date().toISOString()
-  });
-
-  let project = null;
+  currentUser=user;
+  const fullName=pendingAuth?.fullName||user.user_metadata?.full_name||user.email;
+  const roleTitle=pendingAuth?.roleTitle||user.user_metadata?.role_title||'Team member';
+  const projectName=pendingAuth?.projectName||user.user_metadata?.pending_project_name||'';
+  await db.from('profiles').upsert({id:user.id,email:user.email,full_name:fullName,role_title:roleTitle,updated_at:new Date().toISOString()});
+  let project=null;
   if(projectName){
-    project = await getOrCreateProject(projectName, pendingAuth?.mode==='signup');
+    project=await getOrCreateProject(projectName,pendingAuth?.mode==='signup');
     if(!project) throw new Error('Project not found. Use "Create account" to register a new project, or check the project name.');
-    const ok = await ensureMembership(project, fullName, roleTitle, pendingAuth?.mode==='signup');
+    const ok=await ensureMembership(project,fullName,roleTitle,pendingAuth?.mode==='signup');
     if(!ok) throw new Error('Your email is not a member of that project. Check the project name or sign up to create a new one.');
-    localStorage.setItem(`flagit:lastProject:${user.id}`, project.id);
+    localStorage.setItem(`flagit:lastProject:${user.id}`,project.id);
   }
   await startApp(project?.id||null);
 }
 
-async function getOrCreateProject(projectName, allowCreate){
-  const slug = slugify(projectName);
-  let { data, error } = await db.from('projects').select('*').eq('slug',slug).maybeSingle();
+async function getOrCreateProject(projectName,allowCreate){
+  const slug=slugify(projectName);
+  let {data,error}=await db.from('projects').select('*').eq('slug',slug).maybeSingle();
   if(error&&error.code!=='PGRST116') throw error;
   if(data) return data;
   if(!allowCreate) return null;
-  const ins = await db.from('projects').insert({ name:projectName, slug, created_by:currentUser.id }).select('*').single();
-  if(ins.error){
-    const retry = await db.from('projects').select('*').eq('slug',slug).maybeSingle();
-    if(retry.data) return retry.data;
-    throw ins.error;
-  }
+  const ins=await db.from('projects').insert({name:projectName,slug,created_by:currentUser.id}).select('*').single();
+  if(ins.error){ const retry=await db.from('projects').select('*').eq('slug',slug).maybeSingle(); if(retry.data) return retry.data; throw ins.error; }
   return ins.data;
 }
 
-async function ensureMembership(project, fullName, roleTitle, allowCreate){
-  const ex = await db.from('project_members').select('*').eq('project_id',project.id).eq('user_id',currentUser.id).maybeSingle();
+async function ensureMembership(project,fullName,roleTitle,allowCreate){
+  const ex=await db.from('project_members').select('*').eq('project_id',project.id).eq('user_id',currentUser.id).maybeSingle();
   if(ex.error&&ex.error.code!=='PGRST116') throw ex.error;
   if(ex.data) return true;
   if(!allowCreate) return false;
-  const cnt = await db.from('project_members').select('project_id',{count:'exact',head:true}).eq('project_id',project.id);
-  const { error } = await db.from('project_members').insert({
-    project_id:project.id, user_id:currentUser.id,
-    full_name:fullName, role_title:roleTitle,
-    is_admin:(cnt.count||0)===0
-  });
+  const cnt=await db.from('project_members').select('project_id',{count:'exact',head:true}).eq('project_id',project.id);
+  const {error}=await db.from('project_members').insert({project_id:project.id,user_id:currentUser.id,full_name:fullName,role_title:roleTitle,is_admin:(cnt.count||0)===0});
   if(error) throw error;
   return true;
 }
 
-// ── APP ──────────────────────────────────────────────────────
 async function hydrateUserAndProjects(){
-  const { data:{ user } } = await db.auth.getUser();
-  currentUser = user;
-  const res = await db.from('project_members')
-    .select('project_id, full_name, role_title, is_admin, projects(id,name,slug)')
-    .eq('user_id', currentUser.id);
+  const {data:{user}}=await db.auth.getUser();
+  currentUser=user;
+  const res=await db.from('project_members').select('project_id,full_name,role_title,is_admin,projects(id,name,slug)').eq('user_id',currentUser.id);
   if(res.error) throw res.error;
-  myProjects = (res.data||[]).map(r=>({
-    id:r.projects.id, name:r.projects.name, slug:r.projects.slug,
-    role_title:r.role_title, full_name:r.full_name, is_admin:r.is_admin
-  }));
+  myProjects=(res.data||[]).map(r=>({id:r.projects.id,name:r.projects.name,slug:r.projects.slug,role_title:r.role_title,full_name:r.full_name,is_admin:r.is_admin}));
 }
 
 async function startApp(projectId){
   await hydrateUserAndProjects();
-  const { data: invite } = await db
-  .from('invites')
-  .select('*')
-  .eq('email', currentUser.email.toLowerCase())
-  .eq('status', 'pending')
-  .maybeSingle();
-
-if(!invite){
-  await db.auth.signOut();
-  alert('Access denied. You must be invited to use FLAGIT. Contact your project administrator.');
-  document.getElementById('app-shell').classList.remove('active');
-  document.getElementById('screen-auth').classList.add('active');
-  return;
-}
-
-await db.from('invites').update({ status:'accepted' }).eq('id', invite.id);
+  const {data:invite}=await db.from('invites').select('*').eq('email',currentUser.email.toLowerCase()).eq('status','pending').maybeSingle();
+  if(!invite){
+    await db.auth.signOut();
+    alert('Access denied. You must be invited to use FLAGIT. Contact your project administrator.');
+    document.getElementById('app-shell').classList.remove('active');
+    document.getElementById('screen-auth').classList.add('active');
+    return;
+  }
+  await db.from('invites').update({status:'accepted'}).eq('id',invite.id);
   if(!myProjects.length) throw new Error('No project membership found.');
-  const last = projectId || localStorage.getItem(`flagit:lastProject:${currentUser.id}`) || myProjects[0].id;
-  currentProject = myProjects.find(p=>p.id===last) || myProjects[0];
-  localStorage.setItem(`flagit:lastProject:${currentUser.id}`, currentProject.id);
+  const last=projectId||localStorage.getItem(`flagit:lastProject:${currentUser.id}`)||myProjects[0].id;
+  currentProject=myProjects.find(p=>p.id===last)||myProjects[0];
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`,currentProject.id);
   renderTopBar();
   showApp();
   await refreshAll();
@@ -534,76 +446,59 @@ await db.from('invites').update({ status:'accepted' }).eq('id', invite.id);
 }
 
 function renderTopBar(){
-  document.getElementById('top-project-pill').textContent = currentProject?.name || 'No project';
-  document.getElementById('user-badge').innerHTML = `
+  document.getElementById('top-project-pill').textContent=currentProject?.name||'No project';
+  const adminBadge=isAdmin()?`<span class="admin-badge">Admin</span>`:'';
+  document.getElementById('user-badge').innerHTML=`
     ${avatarHTML(currentProject?.full_name||currentUser?.email||'U')}
     <div style="line-height:1.2">
-      <div style="font-size:12px;font-weight:700">${esc(currentProject?.full_name||currentUser?.email||'')}</div>
+      <div style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px">${esc(currentProject?.full_name||currentUser?.email||'')} ${adminBadge}</div>
       <div style="font-size:11px;color:var(--text2)">${esc(currentProject?.role_title||'Team member')}</div>
     </div>`;
-
-  const installBtn = document.getElementById('install-flagit-btn');
-  if(installBtn && deferredPrompt) installBtn.classList.remove('hidden');
-
-  // ── PROJECT SWITCHER ──
-  const pill = document.getElementById('top-project-pill');
-  if(myProjects.length > 1){
-    pill.style.cursor = 'pointer';
-    pill.onclick = toggleProjectSwitcher;
-    pill.title = 'Click to switch project';
-    pill.innerHTML = `${esc(currentProject?.name||'No project')} ▾`;
-  }
+  const installBtn=document.getElementById('install-flagit-btn');
+  if(installBtn&&deferredPrompt) installBtn.classList.remove('hidden');
+  const pill=document.getElementById('top-project-pill');
+  if(myProjects.length>1){ pill.style.cursor='pointer'; pill.onclick=toggleProjectSwitcher; pill.title='Click to switch project'; pill.innerHTML=`${esc(currentProject?.name||'No project')} ▾`; }
+  // Show/hide Team tab based on role
+  document.getElementById('nav-members').style.display='flex';
 }
 
-async function refreshAll(){
-  await Promise.all([loadObservations(), loadNotifications()]);
-  renderContent();
-}
+async function refreshAll(){ await Promise.all([loadObservations(),loadNotifications()]); renderContent(); }
 
 async function loadObservations(){
-  const { data, error } = await db.from('observations')
-    .select('*, observation_comments(id,author_name,body,created_at), observation_photos(id,file_path,file_name,created_at)')
-    .eq('project_id', currentProject.id)
-    .order('created_at',{ascending:false});
+  const {data,error}=await db.from('observations').select('*,observation_comments(id,author_name,body,created_at),observation_photos(id,file_path,file_name,created_at)').eq('project_id',currentProject.id).order('created_at',{ascending:false});
   if(error) throw error;
-  observations = data||[];
+  observations=data||[];
 }
 
 async function loadNotifications(){
-  const { data, error } = await db.from('notifications')
-    .select('*')
-    .eq('recipient_user_id', currentUser.id)
-    .eq('project_id', currentProject.id)
-    .order('created_at',{ascending:false})
-    .limit(50);
+  const {data,error}=await db.from('notifications').select('*').eq('recipient_user_id',currentUser.id).eq('project_id',currentProject.id).order('created_at',{ascending:false}).limit(50);
   if(error) throw error;
-  const prevUnread = notifications.filter(n=>!n.is_read).length;
-  notifications = data||[];
-  const unread = notifications.filter(n=>!n.is_read).length;
-  const el = document.getElementById('notif-badge');
-  el.textContent = unread;
-  el.classList.toggle('hidden', unread===0);
-  if(unread>prevUnread&&'Notification'in window&&Notification.permission==='granted'){
-    const n = notifications.find(n=>!n.is_read);
-    if(n) new Notification(n.title||'FLAGIT update',{body:n.body||''});
-  }
+  const prevUnread=notifications.filter(n=>!n.is_read).length;
+  notifications=data||[];
+  const unread=notifications.filter(n=>!n.is_read).length;
+  const el=document.getElementById('notif-badge');
+  el.textContent=unread; el.classList.toggle('hidden',unread===0);
+  if(unread>prevUnread&&'Notification'in window&&Notification.permission==='granted'){ const n=notifications.find(n=>!n.is_read); if(n) new Notification(n.title||'FLAGIT update',{body:n.body||''}); }
 }
 
 function setView(v){
   currentView=v;
-  ['feed','dashboard','notifications'].forEach(k=>document.getElementById('nav-'+k).classList.toggle('active',k===v));
+  ['feed','dashboard','notifications','members'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
   selectedObservation=null;
+  document.getElementById('fab-btn').style.display=v==='feed'?'flex':'none';
   renderContent();
 }
 
 function renderContent(){
-  const c = document.getElementById('main-content');
+  const c=document.getElementById('main-content');
   if(selectedObservation){ renderDetail(c,selectedObservation); return; }
   if(currentView==='dashboard') return renderDashboard(c);
   if(currentView==='notifications') return renderNotifications(c);
+  if(currentView==='members') return renderMembers(c);
   renderFeed(c);
 }
 
+// ── FEED ─────────────────────────────────────────────
 function renderFeed(c){
   const open=observations.filter(o=>o.status==='Open').length;
   const active=observations.filter(o=>o.status==='In Progress').length;
@@ -613,18 +508,13 @@ function renderFeed(c){
     <div class="metric"><div class="lbl">Open</div><div class="val">${open}</div></div>
     <div class="metric"><div class="lbl">Active</div><div class="val">${active}</div></div>
     <div class="metric"><div class="lbl">Critical</div><div class="val">${crit}</div></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateReport()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Download Report
+    </button>
   </div>`;
-  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-  <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateReport()">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="12" y1="18" x2="12" y2="12"/>
-      <line x1="9" y1="15" x2="15" y2="15"/>
-    </svg>
-    Download Report
-  </button>
-</div>`;
   if(!observations.length) html+=`<div class="card"><div class="small">No observations yet. Tap + to raise the first flag.</div></div>`;
   observations.forEach(o=>{
     html+=`<div class="obs-card" style="border-left-color:${SEVERITY_STYLES[o.severity]?.border||'#ccc'}" onclick="openObservation('${o.id}')">
@@ -643,6 +533,7 @@ function renderFeed(c){
   c.innerHTML=html;
 }
 
+// ── DASHBOARD ─────────────────────────────────────────
 function renderDashboard(c){
   const statuses=['Open','In Progress','Pending Verification','Closed'];
   const cats=[...new Set(observations.map(o=>o.category))];
@@ -661,6 +552,7 @@ function renderDashboard(c){
     </div>`;
 }
 
+// ── NOTIFICATIONS ─────────────────────────────────────
 function renderNotifications(c){
   let html=`<div class="header-row"><div style="font-size:18px;font-weight:700">Alerts</div><button class="btn btn-ghost" style="padding:8px 10px" onclick="markAllRead()">Mark all read</button></div>`;
   if(!notifications.length) html+=`<div class="card"><div class="small">No alerts yet.</div></div>`;
@@ -677,13 +569,136 @@ function renderNotifications(c){
   c.innerHTML=html;
 }
 
-async function openObservation(id){
-  selectedObservation=observations.find(o=>o.id===id)||null;
-  if(selectedObservation) renderContent();
+// ── TEAM / MEMBERS VIEW ───────────────────────────────
+async function renderMembers(c){
+  c.innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:16px">Team members</div><div class="card"><div class="small">Loading...</div></div>`;
+  try{
+    const {data:members,error}=await db.from('project_members').select('*').eq('project_id',currentProject.id).order('full_name');
+    if(error) throw error;
+    const {data:invites}=await db.from('invites').select('*').eq('project_id',currentProject.id).order('created_at',{ascending:false});
+
+    let html=`<div class="header-row"><div style="font-size:18px;font-weight:700">Team — ${esc(currentProject.name)}</div>
+      ${isAdmin()?`<button class="btn btn-brand" style="padding:8px 14px" onclick="openInviteModal()">+ Invite member</button>`:''}
+    </div>`;
+
+    // Members list
+    html+=`<div class="card" style="margin-bottom:14px">
+      <div style="font-weight:700;margin-bottom:12px">Active members (${members.length})</div>`;
+    members.forEach(m=>{
+      const isMe=m.user_id===currentUser.id;
+      html+=`<div class="member-row">
+        ${avatarHTML(m.full_name||'?',40)}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">
+            ${esc(m.full_name||'Unknown')}
+            ${m.is_admin?'<span class="admin-badge">Admin</span>':''}
+            ${isMe?'<span style="font-size:10px;color:var(--text2)">(you)</span>':''}
+          </div>
+          <div style="font-size:12px;color:var(--text2)">${esc(m.role_title||'Member')}</div>
+        </div>
+        ${isAdmin()&&!isMe?`<div style="display:flex;gap:6px;flex-shrink:0">
+          ${m.is_admin
+            ?`<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="toggleAdminRole('${m.user_id}',false)">Remove admin</button>`
+            :`<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="toggleAdminRole('${m.user_id}',true)">Make admin</button>`
+          }
+          <button class="btn btn-red" style="padding:6px 10px;font-size:12px" onclick="removeMember('${m.user_id}','${esc(m.full_name||'this member')}')">Remove</button>
+        </div>`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+
+    // Pending invites (admin only)
+    if(isAdmin()){
+      const pending=(invites||[]).filter(i=>i.status==='pending');
+      html+=`<div class="card">
+        <div style="font-weight:700;margin-bottom:12px">Pending invites (${pending.length})</div>`;
+      if(!pending.length) html+=`<div class="small">No pending invites.</div>`;
+      pending.forEach(inv=>{
+        html+=`<div class="invite-row">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">${esc(inv.email)}</div>
+            <div style="font-size:11px;color:var(--text2)">${esc(inv.role||'Member')} · Invited ${formatDate(inv.created_at)}</div>
+          </div>
+          <button class="btn btn-red" style="padding:6px 10px;font-size:12px" onclick="revokeInvite('${inv.id}','${esc(inv.email)}')">Revoke</button>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+
+    c.innerHTML=html;
+  }catch(err){
+    c.innerHTML=`<div class="card"><div class="small" style="color:var(--red)">Could not load members: ${esc(err.message)}</div></div>`;
+  }
 }
 
-async function renderDetail(c, obs){
+// ── ADMIN ACTIONS ─────────────────────────────────────
+async function toggleAdminRole(userId, makeAdmin){
+  if(!isAdmin()) return;
+  const confirm_msg=makeAdmin?'Make this member a project admin?':'Remove admin rights from this member?';
+  if(!confirm(confirm_msg)) return;
+  try{
+    const {error}=await db.from('project_members').update({is_admin:makeAdmin}).eq('project_id',currentProject.id).eq('user_id',userId);
+    if(error) throw error;
+    renderMembers(document.getElementById('main-content'));
+  }catch(err){ alert(err.message||'Could not update role.'); }
+}
+
+async function removeMember(userId, name){
+  if(!isAdmin()) return;
+  if(!confirm(`Remove ${name} from this project? They will lose access immediately.`)) return;
+  try{
+    const {error}=await db.from('project_members').delete().eq('project_id',currentProject.id).eq('user_id',userId);
+    if(error) throw error;
+    // Also revoke any invites for this user
+    await db.from('invites').update({status:'revoked'}).eq('project_id',currentProject.id);
+    renderMembers(document.getElementById('main-content'));
+  }catch(err){ alert(err.message||'Could not remove member.'); }
+}
+
+// ── INVITE MODAL ──────────────────────────────────────
+function openInviteModal(){ hideBox('invite-err'); hideBox('invite-ok'); document.getElementById('invite-email').value=''; document.getElementById('invite-role').value=''; document.getElementById('invite-modal').style.display='flex'; }
+function closeInviteModal(){ document.getElementById('invite-modal').style.display='none'; }
+function closeInviteModalBg(e){ if(e.target.id==='invite-modal') closeInviteModal(); }
+
+async function sendInvite(){
+  hideBox('invite-err'); hideBox('invite-ok');
+  if(!isAdmin()) return showError('invite-err','Only admins can send invites.');
+  const email=document.getElementById('invite-email').value.trim().toLowerCase();
+  const role=document.getElementById('invite-role').value.trim();
+  if(!email) return showError('invite-err','Please enter an email address.');
+  if(!role) return showError('invite-err','Please enter a role.');
+  const btn=document.getElementById('send-invite-btn');
+  btn.disabled=true; btn.textContent='Sending...';
+  try{
+    const {error}=await db.from('invites').insert({
+      email, project_id:currentProject.id, role,
+      status:'pending', invited_by:currentUser.id
+    });
+    if(error) throw error;
+    showSuccess('invite-ok',`Invite sent to ${email}. They can now sign up and join this project.`);
+    document.getElementById('invite-email').value='';
+    document.getElementById('invite-role').value='';
+  }catch(err){ showError('invite-err',err.message||'Could not send invite.'); }
+  finally{ btn.disabled=false; btn.textContent='Send invite'; }
+}
+
+async function revokeInvite(inviteId, email){
+  if(!isAdmin()) return;
+  if(!confirm(`Revoke invite for ${email}?`)) return;
+  try{
+    const {error}=await db.from('invites').update({status:'revoked'}).eq('id',inviteId);
+    if(error) throw error;
+    renderMembers(document.getElementById('main-content'));
+  }catch(err){ alert(err.message||'Could not revoke invite.'); }
+}
+
+// ── OBSERVATION DETAIL ────────────────────────────────
+async function openObservation(id){ selectedObservation=observations.find(o=>o.id===id)||null; if(selectedObservation) renderContent(); }
+
+async function renderDetail(c,obs){
   const photoUrls=await Promise.all((obs.observation_photos||[]).map(p=>getSignedUrl(p.file_path)));
+  const canEdit=canEditObs(obs);
+  const canDelete=canDeleteObs(obs);
   c.innerHTML=`
     <button class="btn btn-ghost" style="padding:8px 10px;margin-bottom:12px" onclick="closeDetail()">← Back</button>
     <div class="card" style="margin-bottom:12px">
@@ -703,7 +718,10 @@ async function renderDetail(c, obs){
       ${photoUrls.length?`<div class="photo-grid">${photoUrls.map((url,i)=>url?`<img class="photo-thumb" src="${url}" onclick="openPhotoViewer('${url}')" alt="Photo ${i+1}" />`:`<div style="font-size:12px;color:var(--text2)">Unavailable</div>`).join('')}</div>`:`<div class="small">No photos attached.</div>`}
       <div class="header-row" style="margin-top:14px;margin-bottom:4px">
         <div style="font-weight:700">Update status</div>
-        <button class="btn btn-ghost" style="padding:8px 10px" onclick="editObservation('${obs.id}')">Edit</button>
+        <div style="display:flex;gap:6px">
+          ${canEdit?`<button class="btn btn-ghost" style="padding:8px 10px" onclick="editObservation('${obs.id}')">Edit</button>`:''}
+          ${canDelete?`<button class="btn btn-red" style="padding:8px 10px" onclick="deleteObservation('${obs.id}')">Delete</button>`:''}
+        </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${['Open','In Progress','Pending Verification','Closed'].map(s=>`<button class="btn ${obs.status===s?'btn-brand':'btn-ghost'}" style="padding:8px 10px" onclick="updateStatus('${obs.id}','${s}')">${s}</button>`).join('')}</div>
       ${obs.status==='Closed'&&obs.closeout_action?`<div class="tag-box" style="margin-top:12px"><div class="section-label">Close-out action</div><div>${esc(obs.closeout_action)}</div></div>`:''}
@@ -720,58 +738,43 @@ async function renderDetail(c, obs){
 
 function closeDetail(){ selectedObservation=null; renderContent(); }
 
-// ── PHOTOS ───────────────────────────────────────────────────
-function previewPhotos(input){
-  Array.from(input.files||[]).forEach(f=>obsPhotos.push(f));
-  renderPhotoPreview();
-  input.value='';
+// ── DELETE OBSERVATION (admin only) ───────────────────
+async function deleteObservation(id){
+  if(!isAdmin()) return alert('Only admins can delete observations.');
+  if(!confirm('Delete this observation permanently? This cannot be undone.')) return;
+  try{
+    const {error}=await db.from('observations').delete().eq('id',id);
+    if(error) throw error;
+    selectedObservation=null;
+    await refreshAll();
+    renderContent();
+  }catch(err){ alert(err.message||'Could not delete observation.'); }
 }
-function renderPhotoPreview(){
-  const g=document.getElementById('obs-photo-preview');
-  g.innerHTML='';
-  obsPhotos.forEach((f,i)=>{
-    const url=URL.createObjectURL(f);
-    g.innerHTML+=`<img class="photo-thumb" src="${url}" onclick="removePhoto(${i})" title="Tap to remove" />`;
-  });
-}
+
+// ── PHOTOS ───────────────────────────────────────────
+function previewPhotos(input){ Array.from(input.files||[]).forEach(f=>obsPhotos.push(f)); renderPhotoPreview(); input.value=''; }
+function renderPhotoPreview(){ const g=document.getElementById('obs-photo-preview'); g.innerHTML=''; obsPhotos.forEach((f,i)=>{ const url=URL.createObjectURL(f); g.innerHTML+=`<img class="photo-thumb" src="${url}" onclick="removePhoto(${i})" title="Tap to remove" />`; }); }
 function removePhoto(i){ obsPhotos.splice(i,1); renderPhotoPreview(); }
 function openPhotoViewer(src){ document.getElementById('photo-viewer-img').src=src; document.getElementById('photo-viewer').style.display='flex'; }
 function closePhotoViewer(e){ if(e.target.id==='photo-viewer'||e.target.classList.contains('close-x')) document.getElementById('photo-viewer').style.display='none'; }
 
 async function getSignedUrl(path){
   if(signedUrlCache.has(path)) return signedUrlCache.get(path);
-  const { data, error } = await db.storage.from(STORAGE_BUCKET).createSignedUrl(path, 3600);
+  const {data,error}=await db.storage.from(STORAGE_BUCKET).createSignedUrl(path,3600);
   if(error) return '';
-  signedUrlCache.set(path, data.signedUrl);
+  signedUrlCache.set(path,data.signedUrl);
   return data.signedUrl;
 }
 
-// ── OBSERVATION MODAL ────────────────────────────────────────
-function openObservationModal(){
-  editingObservationId=null;
-  hideBox('obs-err');
-  document.getElementById('obs-modal-title').textContent='New observation';
-  document.getElementById('f-cat').value='PPE';
-  document.getElementById('f-loc').value='';
-  document.getElementById('f-sev').value='Medium';
-  document.getElementById('f-responsible').value='';
-  document.getElementById('f-time').value='Immediate';
-  document.getElementById('f-ncr').checked=false;
-  document.getElementById('f-desc').value='';
-  document.getElementById('f-rec').value='';
-  obsPhotos=[];
-  renderPhotoPreview();
-  document.getElementById('save-obs-btn').disabled=false;
-  document.getElementById('save-obs-btn').textContent='Save observation';
-  document.getElementById('obs-modal').style.display='flex';
-}
+// ── OBSERVATION MODAL ────────────────────────────────
+function openObservationModal(){ editingObservationId=null; hideBox('obs-err'); document.getElementById('obs-modal-title').textContent='New observation'; document.getElementById('f-cat').value='PPE'; document.getElementById('f-loc').value=''; document.getElementById('f-sev').value='Medium'; document.getElementById('f-responsible').value=''; document.getElementById('f-time').value='Immediate'; document.getElementById('f-ncr').checked=false; document.getElementById('f-desc').value=''; document.getElementById('f-rec').value=''; obsPhotos=[]; renderPhotoPreview(); document.getElementById('save-obs-btn').disabled=false; document.getElementById('save-obs-btn').textContent='Save observation'; document.getElementById('obs-modal').style.display='flex'; }
 function closeModal(){ document.getElementById('obs-modal').style.display='none'; }
 function closeModalBg(e){ if(e.target.id==='obs-modal') closeModal(); }
 
 function editObservation(id){
   const obs=observations.find(o=>o.id===id); if(!obs) return;
-  editingObservationId=id;
-  hideBox('obs-err');
+  if(!canEditObs(obs)) return alert('You can only edit your own observations.');
+  editingObservationId=id; hideBox('obs-err');
   document.getElementById('obs-modal-title').textContent='Edit observation';
   document.getElementById('f-cat').value=obs.category||'PPE';
   document.getElementById('f-loc').value=obs.location||'';
@@ -781,8 +784,7 @@ function editObservation(id){
   document.getElementById('f-ncr').checked=!!obs.is_ncr;
   document.getElementById('f-desc').value=obs.description||'';
   document.getElementById('f-rec').value=obs.recommendation||'';
-  obsPhotos=[];
-  renderPhotoPreview();
+  obsPhotos=[]; renderPhotoPreview();
   document.getElementById('save-obs-btn').disabled=false;
   document.getElementById('save-obs-btn').textContent='Save changes';
   document.getElementById('obs-modal').style.display='flex';
@@ -790,31 +792,18 @@ function editObservation(id){
 
 async function saveObservation(){
   hideBox('obs-err');
-  const payload={
-    project_id:currentProject.id,
-    category:document.getElementById('f-cat').value,
-    location:document.getElementById('f-loc').value.trim(),
-    severity:document.getElementById('f-sev').value,
-    responsible_person:document.getElementById('f-responsible').value.trim(),
-    timeframe:document.getElementById('f-time').value,
-    is_ncr:document.getElementById('f-ncr').checked,
-    description:document.getElementById('f-desc').value.trim(),
-    recommendation:document.getElementById('f-rec').value.trim(),
-    reporter_name:currentProject.full_name||currentUser.email,
-    created_by:currentUser.id,
-    updated_at:new Date().toISOString()
-  };
+  const payload={project_id:currentProject.id,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value.trim(),severity:document.getElementById('f-sev').value,responsible_person:document.getElementById('f-responsible').value.trim(),timeframe:document.getElementById('f-time').value,is_ncr:document.getElementById('f-ncr').checked,description:document.getElementById('f-desc').value.trim(),recommendation:document.getElementById('f-rec').value.trim(),reporter_name:currentProject.full_name||currentUser.email,created_by:currentUser.id,updated_at:new Date().toISOString()};
   if(!payload.location||!payload.description) return showError('obs-err','Location and description are required.');
   const btn=document.getElementById('save-obs-btn');
   btn.disabled=true; btn.textContent='Saving...';
   try{
     let obsId=editingObservationId;
     if(editingObservationId){
-      const { error }=await db.from('observations').update(payload).eq('id',editingObservationId);
+      const {error}=await db.from('observations').update(payload).eq('id',editingObservationId);
       if(error) throw error;
     } else {
       const ncrRef=payload.is_ncr?`NCR-${Date.now().toString().slice(-6)}`:null;
-      const { data, error }=await db.from('observations').insert({...payload,status:'Open',ncr_ref:ncrRef}).select('id').single();
+      const {data,error}=await db.from('observations').insert({...payload,status:'Open',ncr_ref:ncrRef}).select('id').single();
       if(error) throw error;
       obsId=data.id;
     }
@@ -826,20 +815,15 @@ async function saveObservation(){
       const ph=await db.from('observation_photos').insert({project_id:currentProject.id,observation_id:obsId,file_path:path,file_name:file.name,created_by:currentUser.id});
       if(ph.error) throw ph.error;
     }
-    obsPhotos=[];
-    closeModal();
+    obsPhotos=[]; closeModal();
     await refreshAll();
     selectedObservation=observations.find(o=>o.id===obsId)||null;
     renderContent();
-  }catch(err){
-    showError('obs-err',err.message||'Could not save observation.');
-  }finally{
-    btn.disabled=false;
-    btn.textContent=editingObservationId?'Save changes':'Save observation';
-  }
+  }catch(err){ showError('obs-err',err.message||'Could not save observation.'); }
+  finally{ btn.disabled=false; btn.textContent=editingObservationId?'Save changes':'Save observation'; }
 }
 
-async function updateStatus(id, status){
+async function updateStatus(id,status){
   try{
     const patch={status,updated_at:new Date().toISOString()};
     if(status==='Closed'){
@@ -848,12 +832,12 @@ async function updateStatus(id, status){
       patch.closeout_action=action.trim();
       patch.closed_out_at=new Date().toISOString();
       patch.closed_out_by=currentUser.id;
-      const { error }=await db.from('observations').update(patch).eq('id',id);
+      const {error}=await db.from('observations').update(patch).eq('id',id);
       if(error) throw error;
       showCloseoutPhotoModal(id);
       return;
     }
-    const { error }=await db.from('observations').update(patch).eq('id',id);
+    const {error}=await db.from('observations').update(patch).eq('id',id);
     if(error) throw error;
     await notify(`Status changed to ${status}`,`${currentProject.full_name||currentUser.email} updated an observation to ${status}.`,id);
     await refreshAll();
@@ -861,14 +845,12 @@ async function updateStatus(id, status){
     renderContent();
   }catch(err){ alert(err.message||'Could not update status.'); }
 }
+
 async function addComment(observationId){
   const inp=document.getElementById('detail-comment');
   const body=inp.value.trim(); if(!body) return;
   try{
-    const { error }=await db.from('observation_comments').insert({
-      project_id:currentProject.id, observation_id:observationId,
-      author_id:currentUser.id, author_name:currentProject.full_name||currentUser.email, body
-    });
+    const {error}=await db.from('observation_comments').insert({project_id:currentProject.id,observation_id:observationId,author_id:currentUser.id,author_name:currentProject.full_name||currentUser.email,body});
     if(error) throw error;
     await notify('New comment',`${currentProject.full_name||currentUser.email} added a comment.`,observationId);
     inp.value='';
@@ -878,13 +860,10 @@ async function addComment(observationId){
   }catch(err){ alert(err.message||'Could not add comment.'); }
 }
 
-async function notify(title, body, observationId){
+async function notify(title,body,observationId){
   try{
-    const { data }=await db.from('project_members').select('user_id').eq('project_id',currentProject.id);
-    const rows=(data||[]).filter(r=>r.user_id!==currentUser.id).map(r=>({
-      project_id:currentProject.id, recipient_user_id:r.user_id,
-      actor_user_id:currentUser.id, title, body, observation_id:observationId
-    }));
+    const {data}=await db.from('project_members').select('user_id').eq('project_id',currentProject.id);
+    const rows=(data||[]).filter(r=>r.user_id!==currentUser.id).map(r=>({project_id:currentProject.id,recipient_user_id:r.user_id,actor_user_id:currentUser.id,title,body,observation_id:observationId}));
     if(rows.length) await db.from('notifications').insert(rows);
   }catch(_){}
 }
@@ -893,7 +872,7 @@ async function markOneRead(id){ await db.from('notifications').update({is_read:t
 async function markAllRead(){ await db.from('notifications').update({is_read:true}).eq('project_id',currentProject.id).eq('recipient_user_id',currentUser.id).eq('is_read',false); await loadNotifications(); renderContent(); }
 function toggleNotifications(){ setView('notifications'); }
 
-// ── REALTIME ─────────────────────────────────────────────────
+// ── REALTIME ─────────────────────────────────────────
 function attachRealtime(){
   realtimeChannels.forEach(ch=>db.removeChannel(ch));
   realtimeChannels=[];
@@ -909,372 +888,86 @@ function attachRealtime(){
   realtimeChannels.push(obs,notif);
 }
 
-  async function generateReport(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W = 210, margin = 16, contentW = W - margin*2;
-  let y = 0;
-
-  // ── HEADER ──────────────────────────────────────────
-  doc.setFillColor(216, 90, 48);
-  doc.rect(0, 0, W, 28, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(18); doc.setFont('helvetica','bold');
-  doc.text('FLAGIT', margin, 12);
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('HSE Observation Platform', margin, 18);
-  doc.setFontSize(11); doc.setFont('helvetica','bold');
-  doc.text('HSE Observation Report', W - margin, 12, {align:'right'});
-  doc.setFontSize(8); doc.setFont('helvetica','normal');
-  doc.text(`Project: ${currentProject.name}`, W - margin, 18, {align:'right'});
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`, W - margin, 23, {align:'right'});
-
-  y = 36;
-
-  // ── SUMMARY METRICS ──────────────────────────────────
-  doc.setTextColor(26,26,46);
-  doc.setFontSize(11); doc.setFont('helvetica','bold');
-  doc.text('Summary', margin, y); y += 6;
-
-  const total = observations.length;
-  const open = observations.filter(o=>o.status==='Open').length;
-  const inprog = observations.filter(o=>o.status==='In Progress').length;
-  const closed = observations.filter(o=>o.status==='Closed').length;
-  const critical = observations.filter(o=>o.severity==='Critical').length;
-  const ncrs = observations.filter(o=>o.is_ncr).length;
-
-  const metrics = [
-    {label:'Total Observations', value:total, color:[26,107,42]},
-    {label:'Open', value:open, color:[138,26,26]},
-    {label:'In Progress', value:inprog, color:[122,85,0]},
-    {label:'Closed', value:closed, color:[24,95,165]},
-    {label:'Critical', value:critical, color:[138,26,26]},
-    {label:'NCRs Raised', value:ncrs, color:[74,26,138]}
-  ];
-
-  const boxW = contentW/3 - 3;
-  metrics.forEach((m,i)=>{
-    const col = i%3;
-    const row = Math.floor(i/3);
-    const x = margin + col*(boxW+4.5);
-    const by = y + row*18;
-    doc.setFillColor(245,246,250);
-    doc.roundedRect(x, by, boxW, 14, 2, 2, 'F');
-    doc.setFontSize(18); doc.setFont('helvetica','bold');
-    doc.setTextColor(...m.color);
-    doc.text(String(m.value), x+boxW/2, by+9, {align:'center'});
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.setTextColor(107,114,128);
-    doc.text(m.label, x+boxW/2, by+13, {align:'center'});
-  });
-
-  y += 44;
-
-  // ── BY CATEGORY ──────────────────────────────────────
-  const cats = [...new Set(observations.map(o=>o.category))];
-  if(cats.length){
-    doc.setTextColor(26,26,46);
-    doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text('Observations by Category', margin, y); y += 5;
-    doc.setFillColor(226,228,234);
-    doc.rect(margin, y, contentW, 0.3, 'F'); y += 4;
-
-    cats.forEach(cat=>{
-      const n = observations.filter(o=>o.category===cat).length;
-      const pct = total ? Math.round(n/total*100) : 0;
-      doc.setFontSize(8); doc.setFont('helvetica','normal');
-      doc.setTextColor(26,26,46);
-      doc.text(cat, margin, y+3);
-      doc.text(`${n} (${pct}%)`, W-margin, y+3, {align:'right'});
-      doc.setFillColor(226,228,234);
-      doc.roundedRect(margin+50, y, contentW-60, 4, 1, 1, 'F');
-      doc.setFillColor(216,90,48);
-      doc.roundedRect(margin+50, y, Math.max((contentW-60)*(pct/100),1), 4, 1, 1, 'F');
-      y += 8;
-    });
-    y += 4;
-  }
-
-  // ── OBSERVATIONS LIST ────────────────────────────────
-  doc.setTextColor(26,26,46);
-  doc.setFontSize(11); doc.setFont('helvetica','bold');
-  doc.text('Observation Log', margin, y); y += 5;
-  doc.setFillColor(226,228,234);
-  doc.rect(margin, y, contentW, 0.3, 'F'); y += 5;
-
-  const SEV_COLORS = {
-    Low:[26,107,42], Medium:[122,85,0],
-    High:[138,48,0], Critical:[138,26,26]
-  };
-  const STATUS_COLORS = {
-    'Open':[138,26,26], 'In Progress':[122,85,0],
-    'Pending Verification':[24,95,165], 'Closed':[26,107,42]
-  };
-
-  observations.forEach((obs,idx)=>{
-    const rowH = 28;
-    if(y + rowH > 270){
-      doc.addPage();
-      y = 16;
-      doc.setFillColor(216,90,48);
-      doc.rect(0,0,W,8,'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(7);
-      doc.text(`FLAGIT — ${currentProject.name} (continued)`, margin, 5.5);
-      y = 16;
-    }
-
-    doc.setFillColor(idx%2===0?250:255, idx%2===0?250:255, idx%2===0?250:255);
-    doc.rect(margin, y-3, contentW, rowH, 'F');
-
-    const sevColor = SEV_COLORS[obs.severity]||[107,114,128];
-    const statColor = STATUS_COLORS[obs.status]||[107,114,128];
-
-    doc.setFontSize(9); doc.setFont('helvetica','bold');
-    doc.setTextColor(26,26,46);
-    doc.text(`${obs.category} — ${obs.location||'No location'}`, margin, y+2);
-
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.setTextColor(...sevColor);
-    doc.text(`[${obs.severity}]`, margin+100, y+2);
-    doc.setTextColor(...statColor);
-    doc.text(`[${obs.status}]`, margin+120, y+2);
-    if(obs.is_ncr){
-      doc.setTextColor(74,26,138);
-      doc.text('[NCR]', margin+148, y+2);
-    }
-
-    doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-    doc.setTextColor(26,26,46);
-    const descLines = doc.splitTextToSize(obs.description||'', contentW);
-    doc.text(descLines.slice(0,2), margin, y+8);
-
-    if(obs.recommendation){
-      doc.setTextColor(107,114,128);
-      doc.setFontSize(7);
-      const recLines = doc.splitTextToSize(`Action: ${obs.recommendation}`, contentW);
-      doc.text(recLines.slice(0,1), margin, y+16);
-    }
-
-    doc.setTextColor(150,150,150);
-    doc.setFontSize(6.5);
-    doc.text(`Reporter: ${obs.reporter_name||''}  |  Responsible: ${obs.responsible_person||'-'}  |  ${new Date(obs.created_at).toLocaleDateString('en-GB')}`, margin, y+22);
-
-    doc.setFillColor(226,228,234);
-    doc.rect(margin, y+rowH-4, contentW, 0.2, 'F');
-    y += rowH;
-  });
-
-  // ── FOOTER ───────────────────────────────────────────
-  const pages = doc.internal.getNumberOfPages();
-  for(let i=1;i<=pages;i++){
-    doc.setPage(i);
-    doc.setFillColor(245,246,250);
-    doc.rect(0,285,W,12,'F');
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.setTextColor(107,114,128);
-    doc.text('FLAGIT — HSE Observation Platform | getflagit.com', margin, 291);
-    doc.text(`Page ${i} of ${pages}`, W-margin, 291, {align:'right'});
-    doc.text('CONFIDENTIAL', W/2, 291, {align:'center'});
-  }
-
-  // ── SAVE ─────────────────────────────────────────────
-  const filename = `FLAGIT_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
-  doc.save(filename);
+// ── PDF REPORT ────────────────────────────────────────
+async function generateReport(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,margin=16,contentW=W-margin*2;let y=0;
+  doc.setFillColor(216,90,48);doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('FLAGIT',margin,12);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('HSE Observation Platform',margin,18);
+  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('HSE Observation Report',W-margin,12,{align:'right'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(`Project: ${currentProject.name}`,W-margin,18,{align:'right'});
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`,W-margin,23,{align:'right'});
+  y=36;
+  doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Summary',margin,y);y+=6;
+  const total=observations.length,open=observations.filter(o=>o.status==='Open').length,inprog=observations.filter(o=>o.status==='In Progress').length,closed=observations.filter(o=>o.status==='Closed').length,critical=observations.filter(o=>o.severity==='Critical').length,ncrs=observations.filter(o=>o.is_ncr).length;
+  const metrics=[{label:'Total Observations',value:total,color:[26,107,42]},{label:'Open',value:open,color:[138,26,26]},{label:'In Progress',value:inprog,color:[122,85,0]},{label:'Closed',value:closed,color:[24,95,165]},{label:'Critical',value:critical,color:[138,26,26]},{label:'NCRs Raised',value:ncrs,color:[74,26,138]}];
+  const boxW=contentW/3-3;
+  metrics.forEach((m,i)=>{const col=i%3;const row=Math.floor(i/3);const x=margin+col*(boxW+4.5);const by=y+row*18;doc.setFillColor(245,246,250);doc.roundedRect(x,by,boxW,14,2,2,'F');doc.setFontSize(18);doc.setFont('helvetica','bold');doc.setTextColor(...m.color);doc.text(String(m.value),x+boxW/2,by+9,{align:'center'});doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);doc.text(m.label,x+boxW/2,by+13,{align:'center'});});
+  y+=44;
+  const cats=[...new Set(observations.map(o=>o.category))];
+  if(cats.length){doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Observations by Category',margin,y);y+=5;doc.setFillColor(226,228,234);doc.rect(margin,y,contentW,0.3,'F');y+=4;cats.forEach(cat=>{const n=observations.filter(o=>o.category===cat).length;const pct=total?Math.round(n/total*100):0;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(26,26,46);doc.text(cat,margin,y+3);doc.text(`${n} (${pct}%)`,W-margin,y+3,{align:'right'});doc.setFillColor(226,228,234);doc.roundedRect(margin+50,y,contentW-60,4,1,1,'F');doc.setFillColor(216,90,48);doc.roundedRect(margin+50,y,Math.max((contentW-60)*(pct/100),1),4,1,1,'F');y+=8;});y+=4;}
+  doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Observation Log',margin,y);y+=5;doc.setFillColor(226,228,234);doc.rect(margin,y,contentW,0.3,'F');y+=5;
+  const SEV_COLORS={Low:[26,107,42],Medium:[122,85,0],High:[138,48,0],Critical:[138,26,26]};
+  const STATUS_COLORS={'Open':[138,26,26],'In Progress':[122,85,0],'Pending Verification':[24,95,165],'Closed':[26,107,42]};
+  observations.forEach((obs,idx)=>{const rowH=28;if(y+rowH>270){doc.addPage();y=16;doc.setFillColor(216,90,48);doc.rect(0,0,W,8,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.text(`FLAGIT — ${currentProject.name} (continued)`,margin,5.5);y=16;}doc.setFillColor(idx%2===0?250:255,idx%2===0?250:255,idx%2===0?250:255);doc.rect(margin,y-3,contentW,rowH,'F');const sevColor=SEV_COLORS[obs.severity]||[107,114,128];const statColor=STATUS_COLORS[obs.status]||[107,114,128];doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(26,26,46);doc.text(`${obs.category} — ${obs.location||'No location'}`,margin,y+2);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...sevColor);doc.text(`[${obs.severity}]`,margin+100,y+2);doc.setTextColor(...statColor);doc.text(`[${obs.status}]`,margin+120,y+2);if(obs.is_ncr){doc.setTextColor(74,26,138);doc.text('[NCR]',margin+148,y+2);}doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(26,26,46);const descLines=doc.splitTextToSize(obs.description||'',contentW);doc.text(descLines.slice(0,2),margin,y+8);if(obs.recommendation){doc.setTextColor(107,114,128);doc.setFontSize(7);const recLines=doc.splitTextToSize(`Action: ${obs.recommendation}`,contentW);doc.text(recLines.slice(0,1),margin,y+16);}doc.setTextColor(150,150,150);doc.setFontSize(6.5);doc.text(`Reporter: ${obs.reporter_name||''}  |  Responsible: ${obs.responsible_person||'-'}  |  ${new Date(obs.created_at).toLocaleDateString('en-GB')}`,margin,y+22);doc.setFillColor(226,228,234);doc.rect(margin,y+rowH-4,contentW,0.2,'F');y+=rowH;});
+  const pages=doc.internal.getNumberOfPages();for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFillColor(245,246,250);doc.rect(0,285,W,12,'F');doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);doc.text('FLAGIT — HSE Observation Platform | getflagit.com',margin,291);doc.text(`Page ${i} of ${pages}`,W-margin,291,{align:'right'});doc.text('CONFIDENTIAL',W/2,291,{align:'center'});}
+  doc.save(`FLAGIT_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-// ── PWA INSTALL ─────────────────────────────────────
-let deferredPrompt = null;
+// ── PWA INSTALL ──────────────────────────────────────
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-flagit-btn')?.classList.remove('hidden');});
+window.addEventListener('appinstalled',()=>{deferredPrompt=null;document.getElementById('install-flagit-btn')?.classList.add('hidden');});
+async function installApp(){ if(!deferredPrompt)return; deferredPrompt.prompt(); const{outcome}=await deferredPrompt.userChoice; deferredPrompt=null; }
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('install-flagit-btn')?.classList.remove('hidden');
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  document.getElementById('install-flagit-btn')?.classList.add('hidden');
-});
-
-async function installApp(){
-  if(!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  console.log('Install outcome:', outcome);
-  deferredPrompt = null;
-}
-
-// ── CLOSEOUT PHOTO ───────────────────────────────────
-let closeoutObsId = null;
-let closeoutPhotos = [];
-
-function showCloseoutPhotoModal(obsId){
-  closeoutObsId = obsId;
-  closeoutPhotos = [];
-  renderCloseoutPhotoPreview();
-  hideBox('closeout-err');
-  document.getElementById('closeout-modal').style.display = 'flex';
-}
-
-function closeCloseoutModal(){
-  document.getElementById('closeout-modal').style.display = 'none';
-  closeoutObsId = null;
-  closeoutPhotos = [];
-}
-
-function closeCloseoutModalBg(e){
-  if(e.target.id === 'closeout-modal') closeCloseoutModal();
-}
-
-function previewCloseoutPhotos(input){
-  Array.from(input.files||[]).forEach(f => closeoutPhotos.push(f));
-  renderCloseoutPhotoPreview();
-  input.value = '';
-}
-
-function renderCloseoutPhotoPreview(){
-  const g = document.getElementById('closeout-photo-preview');
-  if(!g) return;
-  g.innerHTML = '';
-  closeoutPhotos.forEach((f,i)=>{
-    const url = URL.createObjectURL(f);
-    g.innerHTML += `<img class="photo-thumb" src="${url}" onclick="removeCloseoutPhoto(${i})" title="Tap to remove" />`;
-  });
-}
-
-function removeCloseoutPhoto(i){
-  closeoutPhotos.splice(i,1);
-  renderCloseoutPhotoPreview();
-}
+// ── CLOSEOUT PHOTO ────────────────────────────────────
+function showCloseoutPhotoModal(obsId){ closeoutObsId=obsId; closeoutPhotos=[]; renderCloseoutPhotoPreview(); hideBox('closeout-err'); document.getElementById('closeout-modal').style.display='flex'; }
+function closeCloseoutModal(){ document.getElementById('closeout-modal').style.display='none'; closeoutObsId=null; closeoutPhotos=[]; }
+function closeCloseoutModalBg(e){ if(e.target.id==='closeout-modal') closeCloseoutModal(); }
+function previewCloseoutPhotos(input){ Array.from(input.files||[]).forEach(f=>closeoutPhotos.push(f)); renderCloseoutPhotoPreview(); input.value=''; }
+function renderCloseoutPhotoPreview(){ const g=document.getElementById('closeout-photo-preview'); if(!g)return; g.innerHTML=''; closeoutPhotos.forEach((f,i)=>{ const url=URL.createObjectURL(f); g.innerHTML+=`<img class="photo-thumb" src="${url}" onclick="removeCloseoutPhoto(${i})" title="Tap to remove" />`; }); }
+function removeCloseoutPhoto(i){ closeoutPhotos.splice(i,1); renderCloseoutPhotoPreview(); }
 
 async function saveCloseoutPhoto(){
   if(!closeoutPhotos.length) return skipCloseoutPhoto();
-  const btn = document.getElementById('save-closeout-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
+  const btn=document.getElementById('save-closeout-btn');btn.disabled=true;btn.textContent='Saving...';
   try{
-    for(const file of closeoutPhotos){
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-      const path = `${currentProject.id}/${closeoutObsId}/closeout_${Date.now()}_${safe}`;
-      const up = await db.storage.from(STORAGE_BUCKET).upload(path, file, {
-        upsert:false, contentType:file.type||'image/jpeg'
-      });
-      if(up.error) throw up.error;
-      await db.from('observation_photos').insert({
-        project_id: currentProject.id,
-        observation_id: closeoutObsId,
-        file_path: path,
-        file_name: `CLOSEOUT_${file.name}`,
-        created_by: currentUser.id
-      });
-    }
-    await notify(
-      'Observation closed out with photo evidence',
-      `${currentProject.full_name||currentUser.email} closed out an observation with photo evidence.`,
-      closeoutObsId
-    );
-    closeCloseoutModal();
-    await refreshAll();
-    selectedObservation = observations.find(o=>o.id===closeoutObsId)||null;
-    renderContent();
-  }catch(err){
-    showError('closeout-err', err.message||'Could not save photo.');
-  }finally{
-    btn.disabled = false;
-    btn.textContent = 'Save close-out photo';
-  }
+    for(const file of closeoutPhotos){const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=`${currentProject.id}/${closeoutObsId}/closeout_${Date.now()}_${safe}`;const up=await db.storage.from(STORAGE_BUCKET).upload(path,file,{upsert:false,contentType:file.type||'image/jpeg'});if(up.error)throw up.error;await db.from('observation_photos').insert({project_id:currentProject.id,observation_id:closeoutObsId,file_path:path,file_name:`CLOSEOUT_${file.name}`,created_by:currentUser.id});}
+    await notify('Observation closed out with photo evidence',`${currentProject.full_name||currentUser.email} closed out an observation with photo evidence.`,closeoutObsId);
+    closeCloseoutModal();await refreshAll();selectedObservation=observations.find(o=>o.id===closeoutObsId)||null;renderContent();
+  }catch(err){ showError('closeout-err',err.message||'Could not save photo.'); }
+  finally{ btn.disabled=false;btn.textContent='Save close-out photo'; }
 }
 
 async function skipCloseoutPhoto(){
-  const obsId = closeoutObsId;
-  await notify(
-    'Observation closed out',
-    `${currentProject.full_name||currentUser.email} closed out an observation.`,
-    obsId
-  );
-  closeCloseoutModal();
-  await refreshAll();
-  selectedObservation = observations.find(o=>o.id===obsId)||null;
-  renderContent();
+  const obsId=closeoutObsId;
+  await notify('Observation closed out',`${currentProject.full_name||currentUser.email} closed out an observation.`,obsId);
+  closeCloseoutModal();await refreshAll();selectedObservation=observations.find(o=>o.id===obsId)||null;renderContent();
 }
+
 // ── PROJECT SWITCHER ─────────────────────────────────
 function toggleProjectSwitcher(){
-  let existing = document.getElementById('project-switcher-dropdown');
-  if(existing){ existing.remove(); return; }
-
-  const pill = document.getElementById('top-project-pill');
-  const rect = pill.getBoundingClientRect();
-
-  const dropdown = document.createElement('div');
-  dropdown.id = 'project-switcher-dropdown';
-  dropdown.style.cssText = `
-    position:fixed;
-    top:${rect.bottom + 6}px;
-    left:${rect.left}px;
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:10px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.12);
-    z-index:999;
-    min-width:200px;
-    overflow:hidden;
-  `;
-
-  dropdown.innerHTML = `
-    <div style="padding:8px 12px;font-size:11px;color:var(--text2);
-    text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">
-      Switch project
-    </div>
-    ${myProjects.map(p=>`
-      <div onclick="switchProject('${p.id}')" style="
-        padding:12px 16px;
-        cursor:pointer;
-        display:flex;
-        align-items:center;
-        gap:10px;
-        font-size:14px;
-        background:${p.id===currentProject.id?'var(--brand-lt)':'var(--surface)'};
-        color:${p.id===currentProject.id?'var(--brand-dk)':'var(--text)'};
-        border-bottom:1px solid var(--border)
-      ">
-        <div style="width:8px;height:8px;border-radius:50%;
-        background:${p.id===currentProject.id?'var(--brand)':'var(--border)'}"></div>
-        <div>
-          <div style="font-weight:600">${esc(p.name)}</div>
-          <div style="font-size:11px;color:var(--text2)">${esc(p.role_title||'Member')}</div>
-        </div>
-        ${p.id===currentProject.id?'<span style="margin-left:auto;font-size:11px;color:var(--brand)">Active</span>':''}
-      </div>
-    `).join('')}
-  `;
-
+  let existing=document.getElementById('project-switcher-dropdown');
+  if(existing){existing.remove();return;}
+  const pill=document.getElementById('top-project-pill');
+  const rect=pill.getBoundingClientRect();
+  const dropdown=document.createElement('div');
+  dropdown.id='project-switcher-dropdown';
+  dropdown.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:999;min-width:200px;overflow:hidden;`;
+  dropdown.innerHTML=`<div style="padding:8px 12px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">Switch project</div>${myProjects.map(p=>`<div onclick="switchProject('${p.id}')" style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;background:${p.id===currentProject.id?'var(--brand-lt)':'var(--surface)'};color:${p.id===currentProject.id?'var(--brand-dk)':'var(--text)'};border-bottom:1px solid var(--border)"><div style="width:8px;height:8px;border-radius:50%;background:${p.id===currentProject.id?'var(--brand)':'var(--border)'}"></div><div><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:11px;color:var(--text2)">${esc(p.role_title||'Member')}${p.is_admin?' · Admin':''}</div></div>${p.id===currentProject.id?'<span style="margin-left:auto;font-size:11px;color:var(--brand)">Active</span>':''}</div>`).join('')}`;
   document.body.appendChild(dropdown);
-
-  // Close when clicking outside
-  setTimeout(()=>{
-    document.addEventListener('click', function handler(e){
-      if(!dropdown.contains(e.target) && e.target.id !== 'top-project-pill'){
-        dropdown.remove();
-        document.removeEventListener('click', handler);
-      }
-    });
-  }, 100);
+  setTimeout(()=>{ document.addEventListener('click',function handler(e){ if(!dropdown.contains(e.target)&&e.target.id!=='top-project-pill'){dropdown.remove();document.removeEventListener('click',handler);} }); },100);
 }
 
 async function switchProject(projectId){
-  const dropdown = document.getElementById('project-switcher-dropdown');
+  const dropdown=document.getElementById('project-switcher-dropdown');
   if(dropdown) dropdown.remove();
-
-  if(projectId === currentProject.id) return;
-
-  currentProject = myProjects.find(p=>p.id===projectId) || currentProject;
-  localStorage.setItem(`flagit:lastProject:${currentUser.id}`, currentProject.id);
-
-  // Detach old realtime channels
+  if(projectId===currentProject.id) return;
+  currentProject=myProjects.find(p=>p.id===projectId)||currentProject;
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`,currentProject.id);
   realtimeChannels.forEach(ch=>db.removeChannel(ch));
   realtimeChannels=[];
-
   renderTopBar();
   await refreshAll();
   attachRealtime();
@@ -1284,40 +977,21 @@ async function signOut(){
   realtimeChannels.forEach(ch=>db.removeChannel(ch));
   realtimeChannels=[];
   await db.auth.signOut();
-  currentUser=null; myProjects=[]; currentProject=null; observations=[]; notifications=[]; selectedObservation=null; pendingAuth=null;
+  currentUser=null;myProjects=[];currentProject=null;observations=[];notifications=[];selectedObservation=null;pendingAuth=null;
   document.getElementById('app-shell').classList.remove('active');
   document.getElementById('screen-auth').classList.add('active');
 }
 
-// ── BOOTSTRAP ────────────────────────────────────────────────
 async function init(){
   initDb();
-  if(!db){
-    showError('auth-err','Could not connect to the database. Check your Supabase URL and key.');
-    return;
-  }
-  // Check for existing session
-  try{
-    const { data:{ session } }=await db.auth.getSession();
-    if(session){ await startApp(); return; }
-  }catch(e){ console.warn('Session check failed:',e.message); }
-
-  // Listen for auth changes
-  db.auth.onAuthStateChange(async(event)=>{
-    if(event==='SIGNED_OUT'){
-      document.getElementById('app-shell').classList.remove('active');
-      document.getElementById('screen-auth').classList.add('active');
-    }
-  });
+  if(!db){ showError('auth-err','Could not connect to the database.'); return; }
+  try{ const{data:{session}}=await db.auth.getSession(); if(session){await startApp();return;} }catch(e){ console.warn('Session check failed:',e.message); }
+  db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load',()=>{
   init();
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('FLAGIT SW registered:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
-  }
+  if('serviceWorker'in navigator){ navigator.serviceWorker.register('/sw.js').then(reg=>console.log('SW registered:',reg.scope)).catch(err=>console.log('SW failed:',err)); }
 });
 </script>
 </body>
