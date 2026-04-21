@@ -247,6 +247,8 @@ button{cursor:pointer}
 const SUPABASE_URL = 'https://ighaahpdqkexayeleczd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HwEY1zGWH0g0FFhNQ-185g_C71Q_KET';
 const STORAGE_BUCKET = 'observation-photos';
+const GROQ_KEY = localStorage.getItem('flagit:groq_key') || '';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 const SEVERITY_STYLES = {
   Low:{bg:'#e6f3e8',text:'#1a6b2a',border:'#7bbf8a'},
