@@ -507,22 +507,6 @@ async function hydrateUserAndProjects(){
 
 async function startApp(projectId){
   await hydrateUserAndProjects();
-  // ── INVITE‑ONLY ACCESS CHECK ───────────────────────────────
-const { data: invite } = await db
-  .from('invites')
-  .select('*')
-  .eq('email', currentUser.email.toLowerCase())
-  .maybeSingle();
-
-if(!invite){
-  await db.auth.signOut();
-  alert('Access denied. You must be invited to use FLAGIT. Contact your project administrator.');
-  document.getElementById('app-shell').classList.remove('active');
-  document.getElementById('screen-auth').classList.add('active');
-  return;
-}
-
-await db.from('invites').update({ status: 'accepted' }).eq('id', invite.id);
   if(!myProjects.length) throw new Error('No project membership found.');
   const last = projectId || localStorage.getItem(`flagit:lastProject:${currentUser.id}`) || myProjects[0].id;
   currentProject = myProjects.find(p=>p.id===last) || myProjects[0];
