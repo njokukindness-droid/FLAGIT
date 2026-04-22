@@ -64,6 +64,10 @@ button{cursor:pointer}
 .member-row:last-child{border-bottom:none}
 .invite-row{display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px}
 @media(max-width:700px){.metric-grid{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
+.presence-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+.presence-online{background:#1a6b2a;box-shadow:0 0 0 0 rgba(26,107,42,0.6);animation:pulse-green 1.5s infinite}
+.presence-offline{background:#9ca3af}
+@keyframes pulse-green{0%{box-shadow:0 0 0 0 rgba(26,107,42,0.6)}70%{box-shadow:0 0 0 6px rgba(26,107,42,0)}100%{box-shadow:0 0 0 0 rgba(26,107,42,0)}}
 </style>
 </head>
 <body>
@@ -444,7 +448,7 @@ async function startApp(projectId){
   renderTopBar();
   showApp();
   await refreshAll();
-  attachRealtime();
+  attachRealtime(); await startPresence();
 }
 
 function renderTopBar(){
@@ -592,7 +596,8 @@ async function renderMembers(c){
         ${avatarHTML(m.full_name||'?',40)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">
-            ${esc(m.full_name||'Unknown')}
+  ${presenceDot(m.user_id)}
+  ${esc(m.full_name||'Unknown')}
             ${m.is_admin?'<span class="admin-badge">Admin</span>':''}
             ${isMe?'<span style="font-size:10px;color:var(--text2)">(you)</span>':''}
           </div>
@@ -889,6 +894,83 @@ function attachRealtime(){
     .subscribe();
   realtimeChannels.push(obs,notif);
 }
+// ── PRESENCE ─────────────────────────────────────────
+let presenceChannel = null;
+let presenceData = {};
+
+async function startPresence(){
+  if(!currentUser||!currentProject) return;
+  // Mark user as online
+  await db.from('user_presence').upsert({
+    user_id: currentUser.id,
+    project_id: currentProject.id,
+    full_name: currentProject.full_name || currentUser.email,
+    last_seen: new Date().toISOString(),
+    is_online: true
+  });
+
+  // Subscribe to presence changes
+  if(presenceChannel) db.removeChannel(presenceChannel);
+  presenceChannel = db.channel(`presence-${currentProject.id}`)
+    .on('postgres_changes',{
+      event:'*', schema:'public', table:'user_presence',
+      filter:`project_id=eq.${currentProject.id}`
+    }, async()=>{
+      await loadPresence();
+      if(currentView==='members') renderMembers(document.getElementById('main-content'));
+    })
+    .subscribe();
+
+  // Update last_seen every 30 seconds
+  setInterval(async()=>{
+    await db.from('user_presence').upsert({
+      user_id: currentUser.id,
+      project_id: currentProject.id,
+      full_name: currentProject.full_name || currentUser.email,
+      last_seen: new Date().toISOString(),
+      is_online: true
+    });
+  }, 30000);
+
+  // Mark offline when tab closes
+  window.addEventListener('beforeunload', markOffline);
+  await loadPresence();
+}
+
+async function loadPresence(){
+  const { data } = await db.from('user_presence')
+    .select('*')
+    .eq('project_id', currentProject.id);
+  presenceData = {};
+  (data||[]).forEach(p=>{
+    // Consider online if last_seen within 2 minutes
+    const lastSeen = new Date(p.last_seen);
+    const now = new Date();
+    const diffMins = (now - lastSeen) / 60000;
+    presenceData[p.user_id] = {
+      is_online: p.is_online && diffMins < 2,
+      last_seen: p.last_seen
+    };
+  });
+}
+
+async function markOffline(){
+  await db.from('user_presence').upsert({
+    user_id: currentUser.id,
+    project_id: currentProject.id,
+    full_name: currentProject.full_name || currentUser.email,
+    last_seen: new Date().toISOString(),
+    is_online: false
+  });
+}
+
+function presenceDot(userId){
+  const p = presenceData[userId];
+  if(!p) return `<span class="presence-dot presence-offline" title="Offline"></span>`;
+  if(p.is_online) return `<span class="presence-dot presence-online" title="Online now"></span>`;
+  const lastSeen = p.last_seen ? `Last seen ${formatDate(p.last_seen)}` : 'Offline';
+  return `<span class="presence-dot presence-offline" title="${lastSeen}"></span>`;
+}
 
 // ── PDF REPORT ────────────────────────────────────────
 async function generateReport(){
@@ -978,6 +1060,7 @@ async function switchProject(projectId){
 async function signOut(){
   realtimeChannels.forEach(ch=>db.removeChannel(ch));
   realtimeChannels=[];
+  await markOffline();
   await db.auth.signOut();
   currentUser=null;myProjects=[];currentProject=null;observations=[];notifications=[];selectedObservation=null;pendingAuth=null;
   document.getElementById('app-shell').classList.remove('active');
