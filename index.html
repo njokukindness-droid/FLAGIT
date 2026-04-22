@@ -901,13 +901,14 @@ let presenceData = {};
 async function startPresence(){
   if(!currentUser||!currentProject) return;
   // Mark user as online
-  await db.from('user_presence').upsert({
-    user_id: currentUser.id,
-    project_id: currentProject.id,
-    full_name: currentProject.full_name || currentUser.email,
-    last_seen: new Date().toISOString(),
-    is_online: true
-  });
+ const { error: presErr } = await db.from('user_presence').upsert({
+  user_id: currentUser.id,
+  project_id: currentProject.id,
+  full_name: currentProject.full_name || currentUser.email,
+  last_seen: new Date().toISOString(),
+  is_online: true
+}, { onConflict: 'user_id' });
+if(presErr) console.error('Presence error:', presErr.message);
 
   // Subscribe to presence changes
   if(presenceChannel) db.removeChannel(presenceChannel);
