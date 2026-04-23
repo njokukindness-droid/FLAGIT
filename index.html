@@ -663,17 +663,10 @@ async function removeMember(userId, name, email){
   if(!isAdmin()) return;
   if(!confirm(`Remove ${name} from this project? They will lose access immediately.`)) return;
   try{
-    // Step 1: Remove from project_members
+    // Only delete from project_members — this is what controls access
     const {error:memberErr} = await db.from('project_members').delete()
       .eq('project_id', currentProject.id).eq('user_id', userId);
     if(memberErr) throw memberErr;
-
-    // Step 2: Revoke invite by email (passed directly — no extra SELECT needed)
-    if(email){
-      await db.from('invites').update({status:'revoked'})
-        .eq('project_id', currentProject.id)
-        .eq('email', email.toLowerCase());
-    }
 
     await renderMembers(document.getElementById('main-content'));
   }catch(err){ alert(err.message||'Could not remove member.'); }
