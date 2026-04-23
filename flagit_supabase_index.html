@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta name="theme-color" content="#d85a30" />
+<title>FLAGIT — Supabase Edition</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--brand:#d85a30;--brand-dk:#993c1d;--brand-lt:#faece7;--blue:#185fa5;--blue-lt:#e6f1fb;--green:#1a6b2a;--green-lt:#e6f3e8;--red:#8a1a1a;--red-lt:#fdeaea;--amber:#7a5500;--amber-lt:#fff8e1;--purple:#4a1a8a;--purple-lt:#f0e6ff;--border:#e2e4ea;--surface:#fff;--surface2:#f5f6fa;--text:#1a1a2e;--text2:#6b7280;--radius:10px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f6fa;color:#1a1a2e;min-height:100vh}
+input,select,textarea,button{font-family:inherit}
+input[type=text],input[type=email],input[type=password],input[type=search],select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--brand)}
+button{cursor:pointer}
+.screen{display:none;min-height:100vh}.screen.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.btn{padding:11px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600}
+.btn-brand{background:var(--brand);color:#fff}.btn-brand:disabled{opacity:.55;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-green{background:var(--green);color:#fff}
+.field-label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.error-box{font-size:13px;color:var(--red);background:var(--red-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
+.success-box{font-size:13px;color:var(--green);background:var(--green-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
+.wordmark{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--brand)}.wordmark span{color:var(--text)}
+.logo-icon{width:56px;height:56px;border-radius:16px;background:var(--brand);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{flex:1;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2)}.tab.active{background:var(--brand-lt);border-color:var(--brand);color:var(--brand)}
+.helper{font-size:12px;color:var(--text2);line-height:1.5}
+.otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}.otp-input{width:46px;height:54px;border:1px solid var(--border);border-radius:8px;text-align:center;font-size:24px}
+#app-shell{display:none;flex-direction:column;min-height:100vh}#app-shell.active{display:flex}
+.top-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.content{max-width:820px;width:100%;margin:0 auto;padding:16px 16px 92px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:60}.nav button{flex:1;background:none;border:none;padding:10px 6px;font-size:11px;color:var(--text2)}.nav button.active{color:var(--brand)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--brand-lt);color:var(--brand-dk);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px}.metric .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}.metric .val{font-size:24px;font-weight:700}
+.filter-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}.filter-bar::-webkit-scrollbar{display:none}.filter-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--text2);white-space:nowrap}.filter-btn.active{background:var(--brand-lt);border-color:var(--brand);color:var(--brand)}
+.obs-card{background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;white-space:nowrap}
+.section-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.tag-box{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:10px}
+.comments .row{display:flex;gap:8px;margin-bottom:12px}.bubble{flex:1;background:var(--surface2);border-radius:8px;padding:8px 10px}
+.fab{position:fixed;right:16px;bottom:72px;width:56px;height:56px;border-radius:50%;background:var(--brand);color:#fff;border:none;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(216,90,48,.45);z-index:65}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80;align-items:flex-end}.modal{background:var(--surface);width:100%;max-height:94vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px 28px}.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer}.photo-add{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);font-size:12px;color:var(--text2);background:var(--surface2)}
+.photo-viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:120;align-items:center;justify-content:center;padding:18px}.photo-viewer img{max-width:96vw;max-height:82vh;border-radius:10px}.photo-viewer .close-x{position:absolute;top:16px;right:18px;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);color:#fff;font-size:28px;cursor:pointer}
+.upload-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;margin-bottom:14px}.upload-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--brand);background:var(--surface2)}
+.header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.pill{display:inline-flex;align-items:center;gap:6px;background:var(--brand-lt);color:var(--brand-dk);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}.small{font-size:12px;color:var(--text2)}
+.hidden{display:none!important}
+.select{width:100%;padding:10px 12px;border:1px solid var(--border);background:var(--surface);border-radius:8px}
+.note{font-size:12px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:12px;line-height:1.5}
+.notification-dot{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:700}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:700px){.metric-grid{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="screen active" id="screen-auth">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
+    <div style="width:100%;max-width:430px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div class="logo-icon"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="white"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="white" opacity=".7"/></svg></div>
+        <div class="wordmark">FLAG<span>IT</span></div>
+        <div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">Supabase production edition</div>
+      </div>
+      <div class="card">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px">Project access</div>
+        <div id="auth-err" class="error-box"></div>
+        <div id="auth-ok" class="success-box"></div>
+
+        <div id="auth-common">
+          <label class="field-label">Project name</label>
+          <input type="text" id="auth-project" list="project-suggestions" placeholder="e.g. AABC LLC" style="margin-bottom:12px" />
+          <datalist id="project-suggestions"></datalist>
+          <label class="field-label">Email address</label>
+          <input type="email" id="auth-email" placeholder="you@company.com" style="margin-bottom:12px" />
+          <label class="field-label">Full name</label>
+          <input type="text" id="auth-name" placeholder="e.g. Kindness C. Njoku" style="margin-bottom:12px" />
+          <label class="field-label">Role</label>
+          <input type="text" id="auth-role" placeholder="e.g. HSE Adviser" style="margin-bottom:12px" />
+        </div>
+
+        <div class="two-col" style="margin-bottom:10px">
+          <button class="btn btn-ghost" style="width:100%" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
+          <button class="btn btn-brand" style="width:100%" id="signup-btn" onclick="startSignUp()">Sign up & send code</button>
+        </div>
+        <div class="note">
+          Existing users should use <b>Sign in with code</b>. New users should use <b>Sign up &amp; send code</b>. Team members in the same project share the same project data.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-verify">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
+    <div style="width:100%;max-width:400px">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" fill="none" stroke="var(--brand)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div class="wordmark" style="font-size:20px">FLAG<span>IT</span></div>
+        <div style="font-size:14px;font-weight:600;margin-top:6px">Verify your email</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px" id="verify-sub">Enter the 6-digit code sent to your email</div>
+      </div>
+      <div class="card">
+        <div id="verify-err" class="error-box"></div>
+        <div id="verify-ok" class="success-box"></div>
+        <div class="otp-row">
+          <input class="otp-input" id="otp0" maxlength="1" inputmode="numeric" oninput="otpInput(0,this)" onkeydown="otpKey(0,event)" />
+          <input class="otp-input" id="otp1" maxlength="1" inputmode="numeric" oninput="otpInput(1,this)" onkeydown="otpKey(1,event)" />
+          <input class="otp-input" id="otp2" maxlength="1" inputmode="numeric" oninput="otpInput(2,this)" onkeydown="otpKey(2,event)" />
+          <input class="otp-input" id="otp3" maxlength="1" inputmode="numeric" oninput="otpInput(3,this)" onkeydown="otpKey(3,event)" />
+          <input class="otp-input" id="otp4" maxlength="1" inputmode="numeric" oninput="otpInput(4,this)" onkeydown="otpKey(4,event)" />
+          <input class="otp-input" id="otp5" maxlength="1" inputmode="numeric" oninput="otpInput(5,this)" onkeydown="otpKey(5,event)" />
+        </div>
+        <button class="btn btn-brand" style="width:100%;margin-bottom:10px" onclick="verifyOtpAndEnter()">Verify &amp; enter FLAGIT</button>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" onclick="resendOtp()">Resend code</button>
+        <div style="text-align:center;font-size:13px"><span onclick="showAuth()" style="color:var(--brand);cursor:pointer">Back</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app-shell">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg width="20" height="20" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="var(--brand)"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="var(--brand-dk)"/></svg>
+      <span class="wordmark" style="font-size:18px">FLAG<span>IT</span></span>
+      <span class="pill" id="top-project-pill">No project</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <select id="project-switcher" class="select" style="width:auto;min-width:180px" onchange="switchProject(this.value)"></select>
+      <button class="btn btn-ghost" style="padding:8px 10px" onclick="toggleNotifications()">Notifications <span id="notif-badge" class="notification-dot hidden">0</span></button>
+      <div style="display:flex;align-items:center;gap:8px" id="user-badge"></div>
+      <button class="btn btn-ghost" style="padding:8px 12px" onclick="signOut()">Out</button>
+    </div>
+  </div>
+  <div class="content" id="main-content"></div>
+  <button class="fab" id="fab-btn" onclick="openObservationModal()">+</button>
+  <div class="nav">
+    <button class="active" id="nav-feed" onclick="setView('feed')">Feed</button>
+    <button id="nav-dashboard" onclick="setView('dashboard')">Dashboard</button>
+    <button id="nav-notifs" onclick="setView('notifications')">Alerts</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="obs-modal" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="header-row"><div style="font-size:18px;font-weight:700" id="obs-modal-title">New observation</div></div>
+    <div id="obs-err" class="error-box"></div>
+    <div class="two-col">
+      <div>
+        <label class="field-label">Category</label>
+        <select id="f-cat" style="margin-bottom:12px">
+          <option>PPE</option><option>Fire Safety</option><option>Housekeeping</option><option>Electrical</option><option>Working at Height</option><option>Chemical Handling</option><option>Machinery</option><option>Environmental</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Location</label>
+        <input type="text" id="f-loc" placeholder="e.g. Zone A - Laydown" style="margin-bottom:12px" />
+      </div>
+      <div>
+        <label class="field-label">Severity</label>
+        <select id="f-sev" style="margin-bottom:12px"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select>
+      </div>
+      <div>
+        <label class="field-label">Responsible person</label>
+        <input type="text" id="f-responsible" placeholder="Enter responsible person" style="margin-bottom:12px" />
+      </div>
+      <div>
+        <label class="field-label">Close-out timeframe</label>
+        <select id="f-time" style="margin-bottom:12px"><option>Immediate</option><option>Same Day</option><option>4 Hours</option><option>24 Hours</option><option>3 Days</option><option>1 Week</option></select>
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:12px">
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="f-ncr" /> Raise NCR</label>
+      </div>
+    </div>
+    <label class="field-label">What did you observe?</label>
+    <textarea id="f-desc" rows="3" placeholder="Describe the hazard or non-conformance..." style="resize:none;margin-bottom:12px"></textarea>
+    <label class="field-label">Recommended action</label>
+    <textarea id="f-rec" rows="3" placeholder="Describe the recommended action..." style="resize:none;margin-bottom:12px"></textarea>
+    <label class="field-label">Observation photos</label>
+    <div id="obs-photo-preview" class="photo-grid"></div>
+    <div class="upload-actions">
+      <label class="upload-chip">📁 Upload from device <input type="file" id="f-photos-device" accept="image/*" multiple style="display:none" onchange="previewPhotos(this,'obsPhotos')" /></label>
+      <label class="upload-chip">📷 Use camera <input type="file" id="f-photos-camera" accept="image/*" multiple capture="environment" style="display:none" onchange="previewPhotos(this,'obsPhotos')" /></label>
+    </div>
+    <div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn btn-brand" style="flex:2" id="save-obs-btn" onclick="saveObservation()">Save observation</button></div>
+  </div>
+</div>
+
+<div class="photo-viewer" id="photo-viewer" onclick="closePhotoViewer(event)">
+  <div class="close-x" onclick="closePhotoViewer(event)">&times;</div>
+  <img id="photo-viewer-img" src="" alt="Observation photo" />
+</div>
+
+<script>
+const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY';
+const STORAGE_BUCKET = 'observation-photos';
+const SEVERITY_STYLES = {
+  Low:{bg:'#e6f3e8',text:'#1a6b2a',border:'#7bbf8a'},
+  Medium:{bg:'#fff8e1',text:'#7a5500',border:'#f5c542'},
+  High:{bg:'#fff0e6',text:'#8a3000',border:'#f5a142'},
+  Critical:{bg:'#fdeaea',text:'#8a1a1a',border:'#e05252'}
+};
+const STATUS_STYLES = {
+  'Open':{bg:'#fdeaea',text:'#8a1a1a'},
+  'In Progress':{bg:'#fff8e1',text:'#7a5500'},
+  'Pending Verification':{bg:'#e6f1fb',text:'#185fa5'},
+  'Closed':{bg:'#e6f3e8',text:'#1a6b2a'}
+};
+let supabase = null;
+let authMode = 'signin';
+let pendingAuth = null;
+let currentUser = null;
+let myProjects = [];
+let currentProject = null;
+let observations = [];
+let notifications = [];
+let currentView = 'feed';
+let selectedObservation = null;
+let realtimeChannels = [];
+let obsPhotos = [];
+let editingObservationId = null;
+const signedUrlCache = new Map();
+
+function initSupabase(){
+  if(!SUPABASE_URL.includes('YOUR-PROJECT') && !SUPABASE_PUBLISHABLE_KEY.includes('YOUR_SUPABASE')){
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+    });
+  }
+}
+
+function showError(id, text){ const el=document.getElementById(id); el.textContent=text; el.style.display='block'; }
+function showSuccess(id, text){ const el=document.getElementById(id); el.textContent=text; el.style.display='block'; }
+function hideBox(id){ const el=document.getElementById(id); el.style.display='none'; el.textContent=''; }
+function avatarHTML(name='U'){ const initials=(name||'U').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(); return `<div class="avatar">${initials}</div>`; }
+function badge(label, style){ return `<span class="badge" style="background:${style.bg};color:${style.text};border:1px solid ${style.border||style.bg}">${label}</span>`; }
+function formatDate(ts){ if(!ts) return ''; return new Date(ts).toLocaleString(); }
+function slugifyProjectName(name){ return String(name||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80); }
+function escapeHtml(str=''){ return str.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function setAuthBusy(busy){ const s1=document.getElementById('signin-btn'); const s2=document.getElementById('signup-btn'); if(s1){s1.disabled=busy; s1.textContent=busy?'Sending...':'Sign in with code';} if(s2){s2.disabled=busy; s2.textContent=busy?'Sending...':'Sign up & send code';} }
+function setSaveBusy(busy){ const btn=document.getElementById('save-obs-btn'); btn.disabled=busy; btn.textContent=busy?(editingObservationId?'Saving...':'Creating...'):(editingObservationId?'Save changes':'Save observation'); }
+
+function switchAuthTab(mode){ authMode = mode; hideBox('auth-err'); hideBox('auth-ok'); }
+function startSignIn(){ switchAuthTab('signin'); sendOtp(); }
+function startSignUp(){ switchAuthTab('signup'); sendOtp(); }
+function showVerify(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
+function showAuth(){ document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-auth').classList.add('active'); }
+function showApp(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.remove('active'); document.getElementById('app-shell').classList.add('active'); }
+function showSetupMessage(){
+  showError('auth-err', 'Add your Supabase URL and publishable or anon key near the top of the HTML file before using this app.');
+}
+
+
+async function loadProjectSuggestions(){
+  if(!supabase) return;
+  try{
+    const { data } = await supabase.from('projects').select('name').order('name', { ascending:true }).limit(50);
+    const dl = document.getElementById('project-suggestions');
+    dl.innerHTML = (data||[]).map(p=>`<option value="${escapeHtml(p.name)}"></option>`).join('');
+  }catch(_e){}
+}
+
+async function sendOtp(){
+  hideBox('auth-err'); hideBox('auth-ok');
+  if(!supabase) return showSetupMessage();
+  const projectName = document.getElementById('auth-project').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
+  const fullName = document.getElementById('auth-name').value.trim();
+  const roleTitle = document.getElementById('auth-role').value.trim();
+  if(!projectName || !email) return showError('auth-err', 'Project name and email are required.');
+  if(authMode==='signup' && (!fullName || !roleTitle)) return showError('auth-err', 'Full name and role are required for sign up.');
+  try{
+    setAuthBusy(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options:{
+        shouldCreateUser: authMode==='signup',
+        data:{ full_name: fullName || null, role_title: roleTitle || null, pending_project_name: projectName }
+      }
+    });
+    if(error) throw error;
+    pendingAuth = { email, projectName, fullName, roleTitle, mode: authMode };
+    document.getElementById('verify-sub').textContent = `Enter the 6-digit code sent to ${email}`;
+    for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
+    showVerify();
+    showSuccess('verify-ok', 'Verification code sent. Check your email inbox and spam folder.');
+  }catch(err){
+    showError('auth-err', err.message || 'Could not send verification code.');
+  }finally{ setAuthBusy(false); }
+}
+
+function otpInput(i, el){ el.value = el.value.replace(/\D/g,''); if(el.value && i<5) document.getElementById('otp'+(i+1)).focus(); }
+function otpKey(i, e){ if(e.key==='Backspace' && !document.getElementById('otp'+i).value && i>0) document.getElementById('otp'+(i-1)).focus(); }
+function otpValue(){ let v=''; for(let i=0;i<6;i++) v += document.getElementById('otp'+i).value; return v; }
+
+async function verifyOtpAndEnter(){
+  hideBox('verify-err'); hideBox('verify-ok');
+  if(!supabase) return showSetupMessage();
+  if(!pendingAuth) return showError('verify-err', 'Your verification session expired. Go back and request a new code.');
+  const token = otpValue();
+  if(token.length !== 6) return showError('verify-err', 'Enter the full 6-digit code.');
+  try{
+    const { error } = await supabase.auth.verifyOtp({ email: pendingAuth.email, token, type: 'email' });
+    if(error) throw error;
+    await postVerifyBootstrap();
+  }catch(err){
+    showError('verify-err', err.message || 'Verification failed.');
+  }
+}
+
+async function resendOtp(){
+  hideBox('verify-err'); hideBox('verify-ok');
+  if(!supabase) return showSetupMessage();
+  if(!pendingAuth) return showError('verify-err', 'Go back and start again.');
+  try{
+    const { error } = await supabase.auth.signInWithOtp({
+      email: pendingAuth.email,
+      options:{ shouldCreateUser: pendingAuth.mode==='signup', data:{ full_name: pendingAuth.fullName || null, role_title: pendingAuth.roleTitle || null, pending_project_name: pendingAuth.projectName } }
+    });
+    if(error) throw error;
+    showSuccess('verify-ok', 'A new verification code has been sent.');
+  }catch(err){ showError('verify-err', err.message || 'Could not resend the code.'); }
+}
+
+async function postVerifyBootstrap(){
+  const { data:{ user }, error:userErr } = await supabase.auth.getUser();
+  if(userErr || !user) throw userErr || new Error('No signed-in user found.');
+  currentUser = user;
+  const fullName = pendingAuth?.fullName || user.user_metadata?.full_name || user.email;
+  const roleTitle = pendingAuth?.roleTitle || user.user_metadata?.role_title || 'Team member';
+  const projectName = pendingAuth?.projectName || user.user_metadata?.pending_project_name || '';
+
+  const { error: profileErr } = await supabase.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    full_name: fullName,
+    role_title: roleTitle,
+    updated_at: new Date().toISOString()
+  });
+  if(profileErr) throw profileErr;
+
+  let project = null;
+  if(projectName){
+    project = await getOrCreateProject(projectName, pendingAuth?.mode === 'signup');
+    if(!project) throw new Error('Project not found. Use Sign up to create a new project or check the project name.');
+    const isMember = await ensureMembership(project, fullName, roleTitle, pendingAuth?.mode === 'signup');
+    if(!isMember) throw new Error('This email is not yet a member of that project. Ask a project admin to invite you or use the same email that joined the project.');
+    localStorage.setItem(`flagit:lastProject:${user.id}`, project.id);
+  }
+
+  await startApp(project?.id || null);
+}
+
+async function getOrCreateProject(projectName, allowCreate){
+  const slug = slugifyProjectName(projectName);
+  let { data, error } = await supabase.from('projects').select('*').eq('slug', slug).maybeSingle();
+  if(error && error.code !== 'PGRST116') throw error;
+  if(data) return data;
+  if(!allowCreate) return null;
+  const inserted = await supabase.from('projects').insert({ name: projectName, slug, created_by: currentUser.id }).select('*').single();
+  if(inserted.error){
+    const retry = await supabase.from('projects').select('*').eq('slug', slug).maybeSingle();
+    if(retry.data) return retry.data;
+    throw inserted.error;
+  }
+  return inserted.data;
+}
+
+async function ensureMembership(project, fullName, roleTitle, allowCreate){
+  const existing = await supabase.from('project_members').select('*').eq('project_id', project.id).eq('user_id', currentUser.id).maybeSingle();
+  if(existing.error && existing.error.code !== 'PGRST116') throw existing.error;
+  if(existing.data) return true;
+  if(!allowCreate) return false;
+  const memberCount = await supabase.from('project_members').select('project_id', { count:'exact', head:true }).eq('project_id', project.id);
+  const { error } = await supabase.from('project_members').insert({
+    project_id: project.id,
+    user_id: currentUser.id,
+    full_name: fullName,
+    role_title: roleTitle,
+    is_admin: (memberCount.count || 0) === 0
+  });
+  if(error) throw error;
+  return true;
+}
+
+async function hydrateUserAndProjects(){
+  const { data:{ user } } = await supabase.auth.getUser();
+  currentUser = user;
+  const memberRes = await supabase
+    .from('project_members')
+    .select('project_id, full_name, role_title, is_admin, projects(id,name,slug)')
+    .eq('user_id', currentUser.id);
+  if(memberRes.error) throw memberRes.error;
+  myProjects = (memberRes.data || []).map(row => ({
+    id: row.projects.id,
+    name: row.projects.name,
+    slug: row.projects.slug,
+    role_title: row.role_title,
+    full_name: row.full_name,
+    is_admin: row.is_admin
+  }));
+}
+
+async function startApp(projectId){
+  await hydrateUserAndProjects();
+  if(!myProjects.length){
+    throw new Error('Your account has no project membership yet.');
+  }
+  const lastProject = projectId || localStorage.getItem(`flagit:lastProject:${currentUser.id}`) || myProjects[0].id;
+  currentProject = myProjects.find(p => p.id === lastProject) || myProjects[0];
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`, currentProject.id);
+  renderTopBar();
+  showApp();
+  await refreshAll();
+  attachRealtime();
+  if('Notification' in window && Notification.permission === 'default'){
+    // no auto-prompt; user can opt in later
+  }
+}
+
+function renderTopBar(){
+  document.getElementById('top-project-pill').textContent = currentProject ? currentProject.name : 'No project';
+  document.getElementById('user-badge').innerHTML = `${avatarHTML(currentProject?.full_name || currentUser?.email || 'U')}<div style="line-height:1.2"><div style="font-size:12px;font-weight:700">${escapeHtml(currentProject?.full_name || currentUser?.email || '')}</div><div style="font-size:11px;color:var(--text2)">${escapeHtml(currentProject?.role_title || 'Team member')}</div></div>`;
+  const switcher = document.getElementById('project-switcher');
+  switcher.innerHTML = myProjects.map(p => `<option value="${p.id}" ${p.id===currentProject.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+}
+
+async function refreshAll(){
+  await Promise.all([loadObservations(), loadNotifications()]);
+  renderContent();
+}
+
+async function loadObservations(){
+  const { data, error } = await supabase
+    .from('observations')
+    .select(`
+      *,
+      observation_comments(id, author_name, body, created_at),
+      observation_photos(id, file_path, file_name, created_at)
+    `)
+    .eq('project_id', currentProject.id)
+    .order('created_at', { ascending:false });
+  if(error) throw error;
+  observations = data || [];
+}
+
+async function loadNotifications(){
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('recipient_user_id', currentUser.id)
+    .eq('project_id', currentProject.id)
+    .order('created_at', { ascending:false })
+    .limit(50);
+  if(error) throw error;
+  const prevUnread = notifications.filter(n => !n.is_read).length;
+  notifications = data || [];
+  const unread = notifications.filter(n => !n.is_read).length;
+  const badgeEl = document.getElementById('notif-badge');
+  badgeEl.textContent = unread;
+  badgeEl.classList.toggle('hidden', unread===0);
+  if(unread > prevUnread && 'Notification' in window && Notification.permission === 'granted'){
+    const newest = notifications.find(n => !n.is_read);
+    if(newest) new Notification(newest.title || 'FLAGIT update', { body: newest.body || '' });
+  }
+}
+
+function setView(view){ currentView=view; ['feed','dashboard','notifications'].forEach(v=>document.getElementById('nav-'+v).classList.toggle('active', v===view)); renderContent(); }
+
+function renderContent(){
+  const c = document.getElementById('main-content');
+  if(selectedObservation){ renderDetail(c, selectedObservation); return; }
+  if(currentView==='dashboard') return renderDashboard(c);
+  if(currentView==='notifications') return renderNotifications(c);
+  renderFeed(c);
+}
+
+function renderFeed(c){
+  const total = observations.length;
+  const open = observations.filter(o=>o.status==='Open').length;
+  const active = observations.filter(o=>o.status==='In Progress').length;
+  const pending = observations.filter(o=>o.status==='Pending Verification').length;
+  const critical = observations.filter(o=>o.severity==='Critical').length;
+  let html = `<div class="metric-grid">
+    <div class="metric"><div class="lbl">Total</div><div class="val">${total}</div></div>
+    <div class="metric"><div class="lbl">Open</div><div class="val">${open}</div></div>
+    <div class="metric"><div class="lbl">Active</div><div class="val">${active}</div></div>
+    <div class="metric"><div class="lbl">Critical</div><div class="val">${critical}</div></div>
+  </div>`;
+  if(!observations.length) html += `<div class="card"><div class="small">No observations yet for this project. Tap the + button to add the first one.</div></div>`;
+  observations.forEach(o=>{
+    html += `<div class="obs-card" style="border-left-color:${SEVERITY_STYLES[o.severity].border}" onclick="openObservation('${o.id}')">
+      <div class="header-row" style="margin-bottom:8px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${badge(o.severity, SEVERITY_STYLES[o.severity])}${badge(o.status, STATUS_STYLES[o.status])}${o.is_ncr?badge('NCR',{bg:'#f0e6ff',text:'#4a1a8a',border:'#c8b3f5'}):''}</div>
+        <div class="small">${formatDate(o.created_at)}</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">${escapeHtml(o.category)} — ${escapeHtml(o.location || 'No location')}</div>
+      <div class="small" style="line-height:1.55;margin-bottom:8px">${escapeHtml(o.description || '')}</div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="small">Reporter: <b>${escapeHtml(o.reporter_name || '')}</b></div>
+        <div class="small">Responsible person: <b>${escapeHtml(o.responsible_person || '-')}</b></div>
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+
+function renderDashboard(c){
+  const statuses = ['Open','In Progress','Pending Verification','Closed'];
+  const cats = [...new Set(observations.map(o=>o.category))];
+  c.innerHTML = `
+    <div class="header-row"><div style="font-size:18px;font-weight:700">Project dashboard</div><button class="btn btn-ghost" style="padding:8px 10px" onclick="requestBrowserNotifications()">Enable browser alerts</button></div>
+    <div class="metric-grid">
+      <div class="metric"><div class="lbl">Project</div><div class="val" style="font-size:17px">${escapeHtml(currentProject.name)}</div></div>
+      <div class="metric"><div class="lbl">Members</div><div class="val">${myProjects.filter(p=>p.id===currentProject.id).length || 1}</div></div>
+      <div class="metric"><div class="lbl">Unread alerts</div><div class="val">${notifications.filter(n=>!n.is_read).length}</div></div>
+      <div class="metric"><div class="lbl">Photos</div><div class="val">${observations.reduce((a,b)=>a + (b.observation_photos?.length || 0),0)}</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div style="font-weight:700;margin-bottom:10px">By status</div>${statuses.map(s=>{
+        const n = observations.filter(o=>o.status===s).length;
+        const pct = observations.length ? Math.round((n/observations.length)*100) : 0;
+        return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${s}</span><b>${n}</b></div><div style="height:6px;border-radius:999px;background:var(--surface2)"><div style="height:6px;border-radius:999px;background:var(--brand);width:${pct}%"></div></div></div>`;
+      }).join('')}</div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px">By category</div>${cats.map(cat=>{
+        const n = observations.filter(o=>o.category===cat).length;
+        const pct = observations.length ? Math.round((n/observations.length)*100) : 0;
+        return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${escapeHtml(cat)}</span><b>${n}</b></div><div style="height:6px;border-radius:999px;background:var(--surface2)"><div style="height:6px;border-radius:999px;background:#185fa5;width:${pct}%"></div></div></div>`;
+      }).join('') || '<div class="small">No data yet.</div>'}</div>
+    </div>`;
+}
+
+function renderNotifications(c){
+  let html = `<div class="header-row"><div style="font-size:18px;font-weight:700">Project alerts</div><button class="btn btn-ghost" style="padding:8px 10px" onclick="markAllNotificationsRead()">Mark all read</button></div>`;
+  if(!notifications.length) html += `<div class="card"><div class="small">No notifications for this project yet.</div></div>`;
+  notifications.forEach(n=>{
+    html += `<div class="card" style="margin-bottom:10px;${n.is_read?'opacity:.8':''}">
+      <div class="header-row" style="margin-bottom:6px"><div style="font-weight:700">${escapeHtml(n.title || 'FLAGIT update')}</div><div class="small">${formatDate(n.created_at)}</div></div>
+      <div class="small" style="margin-bottom:10px;line-height:1.5">${escapeHtml(n.body || '')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${n.observation_id ? `<button class="btn btn-ghost" style="padding:8px 10px" onclick="openObservation('${n.observation_id}')">Open observation</button>` : ''}
+        ${!n.is_read ? `<button class="btn btn-ghost" style="padding:8px 10px" onclick="markNotificationRead('${n.id}')">Mark read</button>` : ''}
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+
+async function openObservation(id){
+  const obs = observations.find(o=>o.id===id);
+  if(!obs) return;
+  selectedObservation = obs;
+  renderContent();
+}
+
+async function renderDetail(c, obs){
+  const photoUrls = await Promise.all((obs.observation_photos || []).map(p => getSignedPhotoUrl(p.file_path)));
+  c.innerHTML = `
+    <button class="btn btn-ghost" style="padding:8px 10px;margin-bottom:12px" onclick="closeDetail()">← Back</button>
+    <div class="card" style="margin-bottom:12px">
+      <div class="header-row">
+        <div>
+          <div class="small" style="margin-bottom:4px">${formatDate(obs.created_at)}</div>
+          <div style="font-size:18px;font-weight:700">${escapeHtml(obs.category)} — ${escapeHtml(obs.location || 'No location')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${badge(obs.severity, SEVERITY_STYLES[obs.severity])}${badge(obs.status, STATUS_STYLES[obs.status])}</div>
+      </div>
+      <div class="tag-box"><div class="section-label">Observation</div><div style="line-height:1.65">${escapeHtml(obs.description || '')}</div></div>
+      <div class="tag-box"><div class="section-label">Recommended action</div><div style="line-height:1.65">${escapeHtml(obs.recommendation || '')}</div></div>
+      <div class="two-col">
+        <div class="tag-box"><div class="section-label">Reporter</div><div>${escapeHtml(obs.reporter_name || '')}</div></div>
+        <div class="tag-box"><div class="section-label">Responsible person</div><div>${escapeHtml(obs.responsible_person || '-')}</div></div>
+        <div class="tag-box"><div class="section-label">Timeframe</div><div>${escapeHtml(obs.timeframe || '-')}</div></div>
+        <div class="tag-box"><div class="section-label">NCR</div><div>${obs.is_ncr ? 'Yes' : 'No'}</div></div>
+      </div>
+      <div class="section-label">Photos</div>
+      ${photoUrls.length ? `<div class="photo-grid">${photoUrls.map((url, i) => url ? `<img class="photo-thumb" src="${url}" onclick="openPhotoViewer('${url}')" alt="Photo ${i+1}" />` : `<div class="photo-add">Unavailable</div>`).join('')}</div>` : `<div class="small">No photos attached.</div>`}
+      <div class="header-row" style="margin-top:14px;margin-bottom:4px">
+        <div style="font-weight:700">Status</div>
+        <button class="btn btn-ghost" style="padding:8px 10px" onclick="editObservation('${obs.id}')">Edit</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${['Open','In Progress','Pending Verification','Closed'].map(s => `<button class="btn ${obs.status===s?'btn-brand':'btn-ghost'}" style="padding:8px 10px" onclick="updateObservationStatus('${obs.id}','${s}')">${s}</button>`).join('')}</div>
+      ${obs.status==='Closed' && obs.closeout_action ? `<div class="tag-box" style="margin-top:12px"><div class="section-label">Close-out action</div><div>${escapeHtml(obs.closeout_action)}</div></div>` : ''}
+    </div>
+    <div class="card comments">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Comments</div>
+      ${(obs.observation_comments || []).map(cm => `<div class="row">${avatarHTML(cm.author_name)}<div class="bubble"><div class="small" style="margin-bottom:4px"><b>${escapeHtml(cm.author_name || '')}</b> · ${formatDate(cm.created_at)}</div><div>${escapeHtml(cm.body || '')}</div></div></div>`).join('') || '<div class="small" style="margin-bottom:12px">No comments yet.</div>'}
+      <div style="display:flex;gap:8px;margin-top:8px"><input type="text" id="detail-comment" placeholder="Add a project update..." onkeydown="if(event.key==='Enter') addComment('${obs.id}')" /><button class="btn btn-brand" style="padding:10px 14px" onclick="addComment('${obs.id}')">Send</button></div>
+    </div>`;
+}
+
+function closeDetail(){ selectedObservation = null; renderContent(); }
+
+function previewPhotos(input, target){
+  const files = Array.from(input.files || []);
+  files.forEach(file => obsPhotos.push(file));
+  renderPhotoPreview();
+  input.value = '';
+}
+function renderPhotoPreview(){
+  const grid = document.getElementById('obs-photo-preview');
+  grid.innerHTML = '';
+  obsPhotos.forEach((file, i) => {
+    const url = URL.createObjectURL(file);
+    grid.innerHTML += `<img class="photo-thumb" src="${url}" onclick="removePreviewPhoto(${i})" title="Tap to remove" />`;
+  });
+}
+function removePreviewPhoto(i){ obsPhotos.splice(i,1); renderPhotoPreview(); }
+
+function openObservationModal(){
+  editingObservationId = null;
+  hideBox('obs-err');
+  document.getElementById('obs-modal-title').textContent = 'New observation';
+  document.getElementById('f-cat').value = 'PPE';
+  document.getElementById('f-loc').value = '';
+  document.getElementById('f-sev').value = 'Medium';
+  document.getElementById('f-responsible').value = '';
+  document.getElementById('f-time').value = 'Immediate';
+  document.getElementById('f-ncr').checked = false;
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-rec').value = '';
+  obsPhotos = [];
+  renderPhotoPreview();
+  setSaveBusy(false);
+  document.getElementById('obs-modal').style.display = 'flex';
+}
+function closeModal(){ document.getElementById('obs-modal').style.display = 'none'; }
+function closeModalBg(e){ if(e.target.id === 'obs-modal') closeModal(); }
+
+function editObservation(id){
+  const obs = observations.find(o=>o.id===id); if(!obs) return;
+  editingObservationId = id;
+  hideBox('obs-err');
+  document.getElementById('obs-modal-title').textContent = 'Edit observation';
+  document.getElementById('f-cat').value = obs.category || 'PPE';
+  document.getElementById('f-loc').value = obs.location || '';
+  document.getElementById('f-sev').value = obs.severity || 'Medium';
+  document.getElementById('f-responsible').value = obs.responsible_person || '';
+  document.getElementById('f-time').value = obs.timeframe || 'Immediate';
+  document.getElementById('f-ncr').checked = !!obs.is_ncr;
+  document.getElementById('f-desc').value = obs.description || '';
+  document.getElementById('f-rec').value = obs.recommendation || '';
+  obsPhotos = [];
+  renderPhotoPreview();
+  setSaveBusy(false);
+  document.getElementById('obs-modal').style.display = 'flex';
+}
+
+async function saveObservation(){
+  hideBox('obs-err');
+  if(!supabase) return showError('obs-err', 'Supabase is not configured yet.');
+  const payload = {
+    project_id: currentProject.id,
+    category: document.getElementById('f-cat').value,
+    location: document.getElementById('f-loc').value.trim(),
+    severity: document.getElementById('f-sev').value,
+    responsible_person: document.getElementById('f-responsible').value.trim(),
+    timeframe: document.getElementById('f-time').value,
+    is_ncr: document.getElementById('f-ncr').checked,
+    description: document.getElementById('f-desc').value.trim(),
+    recommendation: document.getElementById('f-rec').value.trim(),
+    reporter_name: currentProject.full_name || currentUser.email,
+    created_by: currentUser.id,
+    updated_at: new Date().toISOString()
+  };
+  if(!payload.location || !payload.description) return showError('obs-err', 'Location and observation details are required.');
+  try{
+    setSaveBusy(true);
+    let observationId = editingObservationId;
+    if(editingObservationId){
+      const { error } = await supabase.from('observations').update(payload).eq('id', editingObservationId);
+      if(error) throw error;
+      await createProjectNotifications({ title:'Observation updated', body:`${payload.reporter_name} updated ${payload.category} at ${payload.location}.`, observationId: editingObservationId });
+    } else {
+      const ncrRef = payload.is_ncr ? `NCR-${Date.now().toString().slice(-6)}` : null;
+      const { data, error } = await supabase.from('observations').insert({ ...payload, status:'Open', ncr_ref:ncrRef }).select('id').single();
+      if(error) throw error;
+      observationId = data.id;
+      await createProjectNotifications({ title:'New observation', body:`${payload.reporter_name} raised ${payload.category} at ${payload.location}.`, observationId });
+    }
+
+    if(obsPhotos.length){
+      for(const file of obsPhotos){
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${currentProject.id}/${observationId}/${Date.now()}_${safeName}`;
+        const uploadRes = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, { upsert:false, contentType:file.type || 'image/jpeg' });
+        if(uploadRes.error) throw uploadRes.error;
+        const photoRes = await supabase.from('observation_photos').insert({ project_id: currentProject.id, observation_id: observationId, file_path: path, file_name: file.name, created_by: currentUser.id });
+        if(photoRes.error) throw photoRes.error;
+      }
+    }
+
+    obsPhotos = [];
+    closeModal();
+    await refreshAll();
+    if(observationId) selectedObservation = observations.find(o=>o.id===observationId) || null;
+    renderContent();
+  }catch(err){
+    showError('obs-err', err.message || 'Could not save the observation.');
+  }finally{ setSaveBusy(false); }
+}
+
+async function updateObservationStatus(id, status){
+  try{
+    const patch = { status, updated_at:new Date().toISOString() };
+    if(status === 'Closed'){
+      const closeout = prompt('Enter close-out action taken:', selectedObservation?.closeout_action || '');
+      if(closeout === null) return;
+      patch.closeout_action = closeout.trim();
+      patch.closed_out_at = new Date().toISOString();
+      patch.closed_out_by = currentUser.id;
+    }
+    const { error } = await supabase.from('observations').update(patch).eq('id', id);
+    if(error) throw error;
+    await createProjectNotifications({ title:'Observation status changed', body:`${currentProject.full_name || currentUser.email} changed an observation to ${status}.`, observationId:id });
+    await refreshAll();
+    selectedObservation = observations.find(o=>o.id===id) || null;
+    renderContent();
+  }catch(err){ alert(err.message || 'Could not update status.'); }
+}
+
+async function addComment(observationId){
+  const inp = document.getElementById('detail-comment');
+  const body = inp.value.trim();
+  if(!body) return;
+  try{
+    const { error } = await supabase.from('observation_comments').insert({
+      project_id: currentProject.id,
+      observation_id: observationId,
+      author_id: currentUser.id,
+      author_name: currentProject.full_name || currentUser.email,
+      body
+    });
+    if(error) throw error;
+    await createProjectNotifications({ title:'New comment', body:`${currentProject.full_name || currentUser.email} added a comment.`, observationId });
+    inp.value='';
+    await refreshAll();
+    selectedObservation = observations.find(o=>o.id===observationId) || null;
+    renderContent();
+  }catch(err){ alert(err.message || 'Could not add comment.'); }
+}
+
+async function createProjectNotifications({ title, body, observationId }){
+  const memberIds = myProjects.some(p=>p.id===currentProject.id) ? await fetchProjectMemberIds(currentProject.id) : [];
+  const rows = memberIds.filter(id => id !== currentUser.id).map(id => ({
+    project_id: currentProject.id,
+    recipient_user_id: id,
+    actor_user_id: currentUser.id,
+    title,
+    body,
+    observation_id: observationId
+  }));
+  if(!rows.length) return;
+  const { error } = await supabase.from('notifications').insert(rows);
+  if(error) console.error('notification insert failed', error.message);
+}
+
+async function fetchProjectMemberIds(projectId){
+  const { data, error } = await supabase.from('project_members').select('user_id').eq('project_id', projectId);
+  if(error) throw error;
+  return (data || []).map(r => r.user_id);
+}
+
+async function markNotificationRead(id){
+  await supabase.from('notifications').update({ is_read:true }).eq('id', id);
+  await loadNotifications(); renderContent();
+}
+async function markAllNotificationsRead(){
+  await supabase.from('notifications').update({ is_read:true }).eq('project_id', currentProject.id).eq('recipient_user_id', currentUser.id).eq('is_read', false);
+  await loadNotifications(); renderContent();
+}
+function toggleNotifications(){ currentView='notifications'; selectedObservation=null; ['feed','dashboard','notifications'].forEach(v=>document.getElementById('nav-'+v).classList.toggle('active', v==='notifications')); renderContent(); }
+
+async function getSignedPhotoUrl(path){
+  if(signedUrlCache.has(path)) return signedUrlCache.get(path);
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(path, 60 * 60);
+  if(error) return '';
+  signedUrlCache.set(path, data.signedUrl);
+  return data.signedUrl;
+}
+function openPhotoViewer(src){ document.getElementById('photo-viewer-img').src = src; document.getElementById('photo-viewer').style.display='flex'; }
+function closePhotoViewer(e){ if(e.target.id==='photo-viewer' || e.target.classList.contains('close-x')) document.getElementById('photo-viewer').style.display='none'; }
+
+function attachRealtime(){
+  realtimeChannels.forEach(ch => supabase.removeChannel(ch));
+  realtimeChannels = [];
+  const obsChannel = supabase.channel(`obs-${currentProject.id}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'observations', filter:`project_id=eq.${currentProject.id}` }, async () => { await loadObservations(); if(selectedObservation) selectedObservation = observations.find(o=>o.id===selectedObservation.id) || null; renderContent(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'observation_comments', filter:`project_id=eq.${currentProject.id}` }, async () => { await loadObservations(); if(selectedObservation) selectedObservation = observations.find(o=>o.id===selectedObservation.id) || null; renderContent(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'observation_photos', filter:`project_id=eq.${currentProject.id}` }, async () => { signedUrlCache.clear(); await loadObservations(); if(selectedObservation) selectedObservation = observations.find(o=>o.id===selectedObservation.id) || null; renderContent(); })
+    .subscribe();
+  const notifChannel = supabase.channel(`notifs-${currentUser.id}-${currentProject.id}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'notifications', filter:`recipient_user_id=eq.${currentUser.id}` }, async () => { await loadNotifications(); if(currentView==='notifications') renderContent(); })
+    .subscribe();
+  realtimeChannels.push(obsChannel, notifChannel);
+}
+
+async function switchProject(projectId){
+  const found = myProjects.find(p => p.id === projectId); if(!found) return;
+  currentProject = found;
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`, currentProject.id);
+  selectedObservation = null;
+  renderTopBar();
+  await refreshAll();
+  attachRealtime();
+}
+
+async function requestBrowserNotifications(){
+  if(!('Notification' in window)) return alert('This browser does not support notifications.');
+  const perm = await Notification.requestPermission();
+  if(perm === 'granted') alert('Browser notifications enabled while the app tab is open.');
+}
+
+async function signOut(){
+  realtimeChannels.forEach(ch => supabase.removeChannel(ch));
+  realtimeChannels = [];
+  await supabase.auth.signOut();
+  currentUser = null; myProjects=[]; currentProject=null; observations=[]; notifications=[]; selectedObservation=null; pendingAuth=null;
+  document.getElementById('app-shell').classList.remove('active');
+  document.getElementById('screen-auth').classList.add('active');
+}
+
+async function bootstrapExistingSession(){
+  if(!supabase) return;
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(!session) return;
+  try{ await startApp(); }catch(err){ console.warn(err.message); }
+}
+
+supabaseAuthListener = null;
+async function init(){
+  bindAuthTabs();
+  initSupabase();
+  if(!supabase){
+    showSetupMessage();
+    return;
+  }
+  await loadProjectSuggestions();
+  await bootstrapExistingSession();
+  const { data } = supabase.auth.onAuthStateChange(async (event) => {
+    if(event === 'SIGNED_OUT'){
+      document.getElementById('app-shell').classList.remove('active');
+      document.getElementById('screen-auth').classList.add('active');
+    }
+  });
+  supabaseAuthListener = data?.subscription;
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
