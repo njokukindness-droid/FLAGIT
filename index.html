@@ -184,7 +184,16 @@ button{cursor:pointer}
     </div>
     <label class="field-label">What did you observe?</label>
     <textarea id="f-desc" rows="3" placeholder="Describe the hazard or non-conformance..." style="resize:none;margin-bottom:12px"></textarea>
-    <label class="field-label">Recommended action</label>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+  <label class="field-label" style="margin:0">Recommended action</label>
+  <button id="ai-suggest-btn" onclick="askFlagitAI()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--brand);background:var(--brand-lt);color:var(--brand-dk);font-size:12px;font-weight:700;cursor:pointer">
+    Ask FLAGIT AI
+  </button>
+</div>
+<div id="ai-status" style="display:none;font-size:12px;color:var(--brand);background:var(--brand-lt);border-radius:7px;padding:8px 12px;margin-bottom:8px">
+  FLAGIT AI is thinking...
+</div>
+<div id="ai-err" style="display:none;font-size:12px;color:var(--red);background:var(--red-lt);border-radius:7px;padding:8px 12px;margin-bottom:8px"></div>
     <textarea id="f-rec" rows="3" placeholder="Describe the recommended corrective action..." style="resize:none;margin-bottom:12px"></textarea>
     <label class="field-label">Observation photos</label>
     <div id="obs-photo-preview" class="photo-grid"></div>
@@ -251,9 +260,8 @@ button{cursor:pointer}
 const SUPABASE_URL = 'https://ighaahpdqkexayeleczd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HwEY1zGWH0g0FFhNQ-185g_C71Q_KET';
 const STORAGE_BUCKET = 'observation-photos';
-const GROQ_KEY = localStorage.getItem('flagit:groq_key') || '';
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
+const GEMINI_KEY = localStorage.getItem('flagit:gemini_key') || '';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 const SEVERITY_STYLES = {
   Low:{bg:'#e6f3e8',text:'#1a6b2a',border:'#7bbf8a'},
   Medium:{bg:'#fff8e1',text:'#7a5500',border:'#f5c542'},
@@ -971,6 +979,49 @@ function presenceDot(userId){
   if(p.is_online) return `<span class="presence-dot presence-online" title="Online now"></span>`;
   const lastSeen = p.last_seen ? `Last seen ${formatDate(p.last_seen)}` : 'Offline';
   return `<span class="presence-dot presence-offline" title="${lastSeen}"></span>`;
+}
+
+// ── ASK FLAGIT AI ─────────────────────────────────────
+async function askFlagitAI(){
+  const desc = document.getElementById('f-desc').value.trim();
+  if(!desc) return showAIErr('Please describe your observation first.');
+  const cat = document.getElementById('f-cat').value;
+  const loc = document.getElementById('f-loc').value.trim() || 'site';
+  const sev = document.getElementById('f-sev').value;
+  const btn = document.getElementById('ai-suggest-btn');
+  const status = document.getElementById('ai-status');
+  const errEl = document.getElementById('ai-err');
+  btn.disabled = true;
+  status.style.display = 'flex';
+  errEl.style.display = 'none';
+  document.getElementById('f-rec').value = '';
+  try{
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are an expert HSE adviser on an industrial site. A field officer raised this observation on FLAGIT:\n\nCategory: ${cat}\nLocation: ${loc}\nSeverity: ${sev}\nObservation: ${desc}\n\nProvide practical numbered corrective action steps. Maximum 5 steps, under 80 words. No preamble.`
+          }]
+        }]
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'AI request failed.'); }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if(!text) throw new Error('No response from FLAGIT AI.');
+    document.getElementById('f-rec').value = text;
+  }catch(err){ showAIErr(err.message||'Could not reach FLAGIT AI. Please type manually.'); }
+  finally{ btn.disabled=false; status.style.display='none'; }
+}
+
+function showAIErr(msg){
+  const el=document.getElementById('ai-err');
+  if(!el) return;
+  el.textContent=msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none', 5000);
 }
 
 // ── PDF REPORT ────────────────────────────────────────
