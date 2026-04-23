@@ -663,10 +663,23 @@ async function removeMember(userId, name){
   if(!isAdmin()) return;
   if(!confirm(`Remove ${name} from this project? They will lose access immediately.`)) return;
   try{
-    const {error}=await db.from('project_members').delete().eq('project_id',currentProject.id).eq('user_id',userId);
-    if(error) throw error;
-    // Also revoke any invites for this user
-    await db.from('invites').update({status:'revoked'}).eq('project_id',currentProject.id);
+    // Step 1: Get the member's email from their profile
+    const {data:profile, error:profileErr} = await db
+      .from('profiles').select('email').eq('id', userId).single();
+    if(profileErr) throw profileErr;
+
+    // Step 2: Remove from project_members
+    const {error:memberErr} = await db.from('project_members').delete()
+      .eq('project_id', currentProject.id).eq('user_id', userId);
+    if(memberErr) throw memberErr;
+
+    // Step 3: Revoke their invite using their email
+    if(profile?.email){
+      await db.from('invites').update({status:'revoked'})
+        .eq('project_id', currentProject.id)
+        .eq('email', profile.email);
+    }
+
     renderMembers(document.getElementById('main-content'));
   }catch(err){ alert(err.message||'Could not remove member.'); }
 }
