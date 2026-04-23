@@ -717,10 +717,9 @@ async function revokeInvite(inviteId, email){
   try{
     const {error}=await db.from('invites').update({status:'revoked'}).eq('id',inviteId);
     if(error) throw error;
-    renderMembers(document.getElementById('main-content'));
-  }catch(err){ alert(err.message||'Could not revoke invite.'); }
+    await renderMembers(document.getElementById('main-content'));
+  }catch(err){ alert(err.message||'Could not revoke member.'); }
 }
-
 // ── OBSERVATION DETAIL ────────────────────────────────
 async function openObservation(id){ selectedObservation=observations.find(o=>o.id===id)||null; if(selectedObservation) renderContent(); }
 
