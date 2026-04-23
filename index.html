@@ -663,15 +663,21 @@ async function removeMember(userId, name, email){
   if(!isAdmin()) return;
   if(!confirm(`Remove ${name} from this project? They will lose access immediately.`)) return;
   try{
-    // Only delete from project_members — this is what controls access
+    // Step 1: Remove from project_members
     const {error:memberErr} = await db.from('project_members').delete()
       .eq('project_id', currentProject.id).eq('user_id', userId);
     if(memberErr) throw memberErr;
 
+    // Step 2: Revoke their invite so admin can reinvite them later if needed
+    if(email){
+      await db.from('invites').update({status:'revoked'})
+        .eq('project_id', currentProject.id)
+        .eq('email', email.toLowerCase());
+    }
+
     await renderMembers(document.getElementById('main-content'));
   }catch(err){ alert(err.message||'Could not remove member.'); }
 }
-
 // ── INVITE MODAL ──────────────────────────────────────
 function openInviteModal(){ hideBox('invite-err'); hideBox('invite-ok'); document.getElementById('invite-email').value=''; document.getElementById('invite-role').value=''; document.getElementById('invite-modal').style.display='flex'; }
 function closeInviteModal(){ document.getElementById('invite-modal').style.display='none'; }
