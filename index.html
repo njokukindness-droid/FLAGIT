@@ -663,27 +663,28 @@ async function removeMember(userId, name){
   if(!isAdmin()) return;
   if(!confirm(`Remove ${name} from this project? They will lose access immediately.`)) return;
   try{
-    // Step 1: Get the member's email from their profile
-    const {data:profile, error:profileErr} = await db
-      .from('profiles').select('email').eq('id', userId).single();
-    if(profileErr) throw profileErr;
+    // Step 1: Find their invite by looking up accepted invites for this project
+    const {data:invites} = await db.from('invites')
+      .select('id, email')
+      .eq('project_id', currentProject.id)
+      .eq('status', 'accepted');
 
     // Step 2: Remove from project_members
     const {error:memberErr} = await db.from('project_members').delete()
       .eq('project_id', currentProject.id).eq('user_id', userId);
     if(memberErr) throw memberErr;
 
-    // Step 3: Revoke their invite using their email
-    if(profile?.email){
-      await db.from('invites').update({status:'revoked'})
-        .eq('project_id', currentProject.id)
-        .eq('email', profile.email);
+    // Step 3: Revoke their accepted invite if found
+    if(invites && invites.length > 0){
+      for(const inv of invites){
+        await db.from('invites').update({status:'revoked'})
+          .eq('id', inv.id);
+      }
     }
 
-    renderMembers(document.getElementById('main-content'));
+    await renderMembers(document.getElementById('main-content'));
   }catch(err){ alert(err.message||'Could not remove member.'); }
 }
-
 // ── INVITE MODAL ──────────────────────────────────────
 function openInviteModal(){ hideBox('invite-err'); hideBox('invite-ok'); document.getElementById('invite-email').value=''; document.getElementById('invite-role').value=''; document.getElementById('invite-modal').style.display='flex'; }
 function closeInviteModal(){ document.getElementById('invite-modal').style.display='none'; }
