@@ -882,14 +882,22 @@ async function addComment(observationId){
   }catch(err){ alert(err.message||'Could not add comment.'); }
 }
 
-async function notify(title,body,observationId){
+async function notify(title, body, observationId){
   try{
-    const {data}=await db.from('project_members').select('user_id').eq('project_id',currentProject.id);
-    const rows=(data||[]).filter(r=>r.user_id!==currentUser.id).map(r=>({project_id:currentProject.id,recipient_user_id:r.user_id,actor_user_id:currentUser.id,title,body,observation_id:observationId}));
+    const {data} = await db.rpc('get_project_member_ids', {proj_id: currentProject.id});
+    const rows = (data||[])
+      .filter(id => id !== currentUser.id)
+      .map(id => ({
+        project_id: currentProject.id,
+        recipient_user_id: id,
+        actor_user_id: currentUser.id,
+        title,
+        body,
+        observation_id: observationId
+      }));
     if(rows.length) await db.from('notifications').insert(rows);
-  }catch(_){}
+  }catch(e){ console.error('Notify error:', e.message); }
 }
-
 async function markOneRead(id){ await db.from('notifications').update({is_read:true}).eq('id',id); await loadNotifications(); renderContent(); }
 async function markAllRead(){ await db.from('notifications').update({is_read:true}).eq('project_id',currentProject.id).eq('recipient_user_id',currentUser.id).eq('is_read',false); await loadNotifications(); renderContent(); }
 function toggleNotifications(){ setView('notifications'); }
