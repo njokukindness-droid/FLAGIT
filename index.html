@@ -441,7 +441,7 @@ async function hydrateUserAndProjects(){
 
 async function startApp(projectId){
   await hydrateUserAndProjects();
-  const {data:invite}=await db.from('invites').select('*').eq('email',currentUser.email.toLowerCase()).eq('status','pending').maybeSingle();
+  const {data:invite}=await db.from('invites').select('*').eq('email',currentUser.email.toLowerCase()).in('status',['pending','accepted']).maybeSingle();
   if(!invite){
     await db.auth.signOut();
     alert('Access denied. You must be invited to use FLAGIT. Contact your project administrator.');
