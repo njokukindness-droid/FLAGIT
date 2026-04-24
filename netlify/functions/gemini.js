@@ -13,8 +13,8 @@ export default async (req) => {
 
   const body = await req.json();
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,,
-        {
+    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -22,6 +22,7 @@ export default async (req) => {
   );
 
   const data = await geminiRes.json();
+  console.log('Gemini response:', JSON.stringify(data));
   return new Response(JSON.stringify(data), {
     status: geminiRes.status,
     headers: { 'Content-Type': 'application/json' }
