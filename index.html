@@ -1277,18 +1277,59 @@ async function generateNCR(obsId){
   y += 14;
 
   // ── SECTION: NON-CONFORMANCE DESCRIPTION ─────────────
-  y = sectionTitle('2. DESCRIPTION OF NON-CONFORMANCE', y);
-  doc.setFillColor(250,250,250);
-  doc.rect(margin, y, contentW, 28, 'F');
-  doc.setDrawColor(226,228,234);
-  doc.rect(margin, y, contentW, 28, 'S');
-  doc.setTextColor(26,26,46);
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
-  const descLines = doc.splitTextToSize(obs.description || '-', contentW - 6);
-  doc.text(descLines.slice(0, 6), margin + 3, y + 6);
-  y += 32;
+y = sectionTitle('2. DESCRIPTION OF NON-CONFORMANCE', y);
 
+const photos = obs.observation_photos || [];
+const hasPhotos = photos.length > 0;
+const descWidth = hasPhotos ? contentW * 0.55 : contentW;
+const photoWidth = contentW * 0.42;
+const boxH = 40;
+
+doc.setFillColor(250,250,250);
+doc.rect(margin, y, descWidth, boxH, 'F');
+doc.setDrawColor(226,228,234);
+doc.rect(margin, y, descWidth, boxH, 'S');
+doc.setTextColor(26,26,46);
+doc.setFontSize(8.5);
+doc.setFont('helvetica', 'normal');
+const descLines = doc.splitTextToSize(obs.description || '-', descWidth - 6);
+doc.text(descLines.slice(0, 8), margin + 3, y + 6);
+
+if(hasPhotos){
+  const photoX = margin + descWidth + (contentW * 0.03);
+  doc.setFillColor(245,246,250);
+  doc.rect(photoX, y, photoWidth, boxH, 'F');
+  doc.setDrawColor(226,228,234);
+  doc.rect(photoX, y, photoWidth, boxH, 'S');
+
+  try{
+    const firstPhoto = photos[0];
+    const signedUrl = await getSignedUrl(firstPhoto.file_path);
+    if(signedUrl){
+      const response = await fetch(signedUrl);
+      const blob = await response.blob();
+      const base64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+      const imgType = blob.type.includes('png') ? 'PNG' : 'JPEG';
+      doc.addImage(base64, imgType, photoX + 1, y + 1, photoWidth - 2, boxH - 2);
+    }
+  }catch(err){
+    doc.setTextColor(107,114,128);
+    doc.setFontSize(7);
+    doc.text('Photo unavailable', photoX + 3, y + 20);
+  }
+
+  // Photo caption
+  doc.setTextColor(107,114,128);
+  doc.setFontSize(6.5);
+  doc.text('Observation Photo Evidence', photoX + photoWidth/2, y + boxH + 4, {align:'center'});
+  y += 8;
+}
+
+y += boxH + 6;
   // ── SECTION: REQUIRED CORRECTIVE ACTION ──────────────
   y = sectionTitle('3. REQUIRED CORRECTIVE ACTION', y);
   doc.setFillColor(250,250,250);
