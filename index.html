@@ -422,7 +422,7 @@ async function ensureMembership(project,fullName,roleTitle,allowCreate){
   if(ex.data) return true;
   if(!allowCreate) return false;
   const cnt=await db.from('project_members').select('project_id',{count:'exact',head:true}).eq('project_id',project.id);
-  const {error}=await db.from('project_members').insert({project_id:project.id,user_id:currentUser.id,email:currentUser.email,full_name:fullName,role_title:roleTitle,is_admin: allowCreate && (cnt.count||0)===0;
+  const {error}=await db.from('project_members').insert({project_id:project.id,user_id:currentUser.id,email:currentUser.email,full_name:fullName,role_title:roleTitle,is_admin: allowCreate && (cnt.count||0)===0});
   if(error) throw error;
   return true;
 }
