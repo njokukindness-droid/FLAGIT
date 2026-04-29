@@ -74,50 +74,7 @@ button{cursor:pointer}
 </style>
 </head>
 <body>
-<!-- OWNER LOGIN -->
-<div class="owner-overlay" id="owner-login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px">
-  <div class="owner-panel" style="background:var(--surface);border-radius:16px;width:100%;max-width:420px;padding:24px">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:18px;font-weight:700;color:var(--brand)">Owner Access</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px">Restricted area</div>
-    </div>
-    <div id="owner-login-err" class="error-box"></div>
-    <label class="field-label">Email</label>
-    <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
-    <label class="field-label">Password</label>
-    <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
-      <button class="btn btn-brand" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
-    </div>
-  </div>
-</div>
 
-<!-- OWNER DASHBOARD -->
-<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px"></div>
-<!-- AUTH SCREEN -->
-<div class="screen active" id="screen-auth">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
-    <div style="width:100%;max-width:430px">
-      <div style="text-align:center;margin-bottom:24px">
-        <img src="/logo-stacke.png" alt="FLAGIT" style="width:280px;margin:0 auto 4px;display:block;background:transparent" onclick="handleOwnerTap()" /><div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>      </div>
-      <div class="card">
-        <div id="auth-err" class="error-box"></div>
-        <div id="auth-ok" class="success-box"></div>
-        <div id="form-signin">
-          <div style="font-size:16px;font-weight:700;margin-bottom:14px">Sign in</div>
-          <label class="field-label">Project name</label>
-          <input type="text" id="si-project" placeholder="e.g. AABC LLC" style="margin-bottom:12px" />
-          <label class="field-label">Email address</label>
-          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:16px" />
-          <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
-          
-        
-        <div class="note" style="margin-top:14px">Team members in the same project share the same project data. Each organisation's data is completely separate.</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- VERIFY SCREEN -->
 <div class="screen" id="screen-verify">
@@ -1548,5 +1505,49 @@ y += boxH + 6;
   doc.save(`FLAGIT_${ncrRef}_${currentProject.name.replace(/\s+/g,'_')}.pdf`);
 }
 </script>
+<!-- OWNER LOGIN -->
+<div class="owner-overlay" id="owner-login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px">
+  <div class="owner-panel" style="background:var(--surface);border-radius:16px;width:100%;max-width:420px;padding:24px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:700;color:var(--brand)">Owner Access</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Restricted area</div>
+    </div>
+    <div id="owner-login-err" class="error-box"></div>
+    <label class="field-label">Email</label>
+    <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
+    <label class="field-label">Password</label>
+    <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
+      <button class="btn btn-brand" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- OWNER DASHBOARD -->
+<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px"></div>
+<!-- AUTH SCREEN -->
+<div class="screen active" id="screen-auth">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
+    <div style="width:100%;max-width:430px">
+      <div style="text-align:center;margin-bottom:24px">
+        <img src="logo-stacke.png" alt="FLAGIT" style="width:280px;margin:0 auto 4px;display:block;background:transparent" onclick="handleOwnerTap()" /><div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>      </div>
+      <div class="card">
+        <div id="auth-err" class="error-box"></div>
+        <div id="auth-ok" class="success-box"></div>
+        <div id="form-signin">
+          <div style="font-size:16px;font-weight:700;margin-bottom:14px">Sign in</div>
+          <label class="field-label">Project name</label>
+          <input type="text" id="si-project" placeholder="e.g. AABC LLC" style="margin-bottom:12px" />
+          <label class="field-label">Email address</label>
+          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:16px" />
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
+          
+        
+        <div class="note" style="margin-top:14px">Team members in the same project share the same project data. Each organisation's data is completely separate.</div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
