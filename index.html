@@ -68,16 +68,39 @@ button{cursor:pointer}
 .presence-online{background:#1a6b2a;box-shadow:0 0 0 0 rgba(26,107,42,0.6);animation:pulse-green 1.5s infinite}
 .presence-offline{background:#9ca3af}
 @keyframes pulse-green{0%{box-shadow:0 0 0 0 rgba(26,107,42,0.6)}70%{box-shadow:0 0 0 6px rgba(26,107,42,0)}100%{box-shadow:0 0 0 0 rgba(26,107,42,0)}}
+.owner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px}
+.owner-panel{background:var(--surface);border-radius:16px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto}
+.owner-dashboard{display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px}
 </style>
 </head>
 <body>
+<!-- OWNER LOGIN -->
+<div class="owner-overlay" id="owner-login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px">
+  <div class="owner-panel" style="background:var(--surface);border-radius:16px;width:100%;max-width:420px;padding:24px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:700;color:var(--brand)">Owner Access</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Restricted area</div>
+    </div>
+    <div id="owner-login-err" class="error-box"></div>
+    <label class="field-label">Email</label>
+    <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
+    <label class="field-label">Password</label>
+    <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
+      <button class="btn btn-brand" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
+    </div>
+  </div>
+</div>
 
+<!-- OWNER DASHBOARD -->
+<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px"></div>
 <!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
     <div style="width:100%;max-width:430px">
       <div style="text-align:center;margin-bottom:24px">
-        <img src="/logo-stacke.png" alt="FLAGIT" style="width:280px;margin:0 auto 4px;display:block;background:transparent" /><div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>      </div>
+        <img src="/logo-stacke.png" alt="FLAGIT" style="width:280px;margin:0 auto 4px;display:block;background:transparent" onclick="handleOwnerTap()" /><div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>      </div>
       <div class="card">
         <div id="auth-err" class="error-box"></div>
         <div id="auth-ok" class="success-box"></div>
@@ -1163,7 +1186,172 @@ async function init(){
   try{ const{data:{session}}=await db.auth.getSession(); if(session){await startApp();return;} }catch(e){ console.warn('Session check failed:',e.message); }
   db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
 }
+// ── OWNER DASHBOARD ──────────────────────────────────
+let ownerTapCount = 0;
+let ownerTapTimer = null;
+let ownerAuthenticated = false;
 
+function handleOwnerTap(){
+  ownerTapCount++;
+  clearTimeout(ownerTapTimer);
+  ownerTapTimer = setTimeout(()=>{ ownerTapCount = 0; }, 2000);
+  if(ownerTapCount >= 5){
+    ownerTapCount = 0;
+    showOwnerLogin();
+  }
+}
+
+function showOwnerLogin(){
+  const overlay = document.getElementById('owner-login-overlay');
+  if(overlay) overlay.style.display = 'flex';
+}
+
+function closeOwnerLogin(){
+  const overlay = document.getElementById('owner-login-overlay');
+  if(overlay) overlay.style.display = 'none';
+  document.getElementById('owner-email-inp').value = '';
+  document.getElementById('owner-pass-inp').value = '';
+  document.getElementById('owner-login-err').style.display = 'none';
+}
+
+function submitOwnerLogin(){
+  const email = document.getElementById('owner-email-inp').value.trim().toLowerCase();
+  const pass = document.getElementById('owner-pass-inp').value;
+  const err = document.getElementById('owner-login-err');
+  if(email !== 'kindnessnjoku@outlook.com' || pass !== 'Flagit@CEOKind!'){
+    err.textContent = 'Invalid credentials.';
+    err.style.display = 'block';
+    return;
+  }
+  ownerAuthenticated = true;
+  closeOwnerLogin();
+  openOwnerDashboard();
+}
+
+async function openOwnerDashboard(){
+  if(!ownerAuthenticated) return;
+  const dash = document.getElementById('owner-dashboard');
+  dash.style.display = 'block';
+  dash.innerHTML = `
+    <div style="max-width:900px;margin:0 auto;padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div>
+          <div style="font-size:22px;font-weight:700;color:var(--brand)">FLAGIT Owner Dashboard</div>
+          <div style="font-size:12px;color:var(--text2)">Super admin view — confidential</div>
+        </div>
+        <button class="btn btn-ghost" onclick="closeOwnerDashboard()">✕ Exit</button>
+      </div>
+      <div id="owner-content"><div style="color:var(--text2)">Loading...</div></div>
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px">Create New Project</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input type="text" id="new-project-name" placeholder="Organisation / Project name" style="flex:1;min-width:200px" />
+          <input type="email" id="new-admin-email" placeholder="Admin email address" style="flex:1;min-width:200px" />
+          <input type="text" id="new-admin-role" placeholder="Admin role title" style="flex:1;min-width:160px" />
+          <button class="btn btn-brand" onclick="ownerCreateProject()">Create & Invite Admin</button>
+        </div>
+        <div id="owner-create-msg" style="margin-top:10px;font-size:13px;display:none"></div>
+      </div>
+    </div>`;
+  await loadOwnerContent();
+}
+
+function closeOwnerDashboard(){
+  document.getElementById('owner-dashboard').style.display = 'none';
+  ownerAuthenticated = false;
+}
+
+async function loadOwnerContent(){
+  try{
+    const {data:projects, error:pErr} = await db.from('projects').select('*').order('created_at', {ascending:false});
+    if(pErr) throw pErr;
+
+    const {data:members, error:mErr} = await db.from('project_members').select('*').order('full_name');
+    if(mErr) throw mErr;
+
+    const {data:invites, error:iErr} = await db.from('invites').select('*').order('created_at', {ascending:false});
+    if(iErr) throw iErr;
+
+    let html = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <div class="metric"><div class="lbl">Total Projects</div><div class="val">${projects.length}</div></div>
+        <div class="metric"><div class="lbl">Total Members</div><div class="val">${members.length}</div></div>
+        <div class="metric"><div class="lbl">Pending Invites</div><div class="val">${(invites||[]).filter(i=>i.status==='pending').length}</div></div>
+      </div>`;
+
+    projects.forEach(p => {
+      const projectMembers = members.filter(m => m.project_id === p.id);
+      const admins = projectMembers.filter(m => m.is_admin);
+      const pendingInvites = (invites||[]).filter(i => i.project_id === p.id && i.status === 'pending');
+
+      html += `<div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:16px;font-weight:700">${esc(p.name)}</div>
+            <div style="font-size:11px;color:var(--text2)">${formatDate(p.created_at)} · ${projectMembers.length} member${projectMembers.length!==1?'s':''}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="ownerInviteMember('${p.id}','${esc(p.name)}')">+ Invite Member</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${projectMembers.map(m=>`
+            <div style="background:var(--surface2);border-radius:8px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:6px">
+              ${avatarHTML(m.full_name||'?', 24)}
+              <div>
+                <div style="font-weight:600">${esc(m.full_name||'Unknown')}</div>
+                <div style="font-size:10px;color:var(--text2)">${esc(m.role_title||'Member')}${m.is_admin?' · Admin':''}</div>
+              </div>
+            </div>`).join('')}
+          ${pendingInvites.map(i=>`
+            <div style="background:var(--amber-lt);border-radius:8px;padding:6px 10px;font-size:12px;border:1px solid #f5c542">
+              <div style="font-weight:600">${esc(i.email)}</div>
+              <div style="font-size:10px;color:var(--amber)">Pending · ${esc(i.role||'')}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    });
+
+    document.getElementById('owner-content').innerHTML = html;
+  }catch(err){
+    document.getElementById('owner-content').innerHTML = `<div style="color:var(--red)">Error loading data: ${esc(err.message)}</div>`;
+  }
+}
+
+async function ownerCreateProject(){
+  const name = document.getElementById('new-project-name').value.trim();
+  const email = document.getElementById('new-admin-email').value.trim().toLowerCase();
+  const role = document.getElementById('new-admin-role').value.trim();
+  const msg = document.getElementById('owner-create-msg');
+  if(!name||!email||!role){ msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='All fields are required.'; return; }
+  msg.style.display='block'; msg.style.color='var(--text2)'; msg.textContent='Creating project...';
+  try{
+    const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+    const {data:proj, error:pErr} = await db.from('projects').insert({name, slug}).select('*').single();
+    if(pErr) throw pErr;
+    const {error:iErr} = await db.from('invites').insert({email, project_id:proj.id, role, status:'pending', invited_by:null});
+    if(iErr) throw iErr;
+    msg.style.color='var(--green)';
+    msg.textContent=`✅ Project "${name}" created! Invite sent to ${email}.`;
+    document.getElementById('new-project-name').value='';
+    document.getElementById('new-admin-email').value='';
+    document.getElementById('new-admin-role').value='';
+    await loadOwnerContent();
+  }catch(err){ msg.style.color='var(--red)'; msg.textContent='Error: '+err.message; }
+}
+
+async function ownerInviteMember(projectId, projectName){
+  const email = prompt(`Invite to "${projectName}"\nEnter email address:`);
+  if(!email) return;
+  const role = prompt('Enter their role title:');
+  if(!role) return;
+  try{
+    const {error} = await db.from('invites').insert({email:email.trim().toLowerCase(), project_id:projectId, role, status:'pending', invited_by:null});
+    if(error) throw error;
+    alert(`✅ Invite sent to ${email}`);
+    await loadOwnerContent();
+  }catch(err){ alert('Error: '+err.message); }
+}
 window.addEventListener('load',()=>{
   init();
   if('serviceWorker'in navigator){ navigator.serviceWorker.register('/sw.js').then(reg=>console.log('SW registered:',reg.scope)).catch(err=>console.log('SW failed:',err)); }
