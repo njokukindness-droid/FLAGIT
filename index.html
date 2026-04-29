@@ -109,7 +109,7 @@ button{cursor:pointer}
 <div id="app-shell">
   <div class="top-bar">
     <div style="display:flex;align-items:center;gap:8px">
-      <img src="./logo-horizontal.png" alt="FLAGIT" style="height:96px;object-fit:contain" />
+      <img src="./logo-horizontal.png" alt="FLAGIT" style="height:36px;object-fit:contain;max-width:120px" />
       <span class="pill" id="top-project-pill">No project</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -1211,6 +1211,7 @@ async function loadOwnerContent(){
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="ownerInviteMember('${p.id}','${esc(p.name)}')">+ Invite Member</button>
+<button class="btn btn-red" style="padding:6px 10px;font-size:12px" onclick="ownerSuspendProject('${p.id}','${esc(p.name)}')">Suspend</button>
           </div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -1270,6 +1271,15 @@ async function ownerInviteMember(projectId, projectName){
     alert(`✅ Invite sent to ${email}`);
     await loadOwnerContent();
   }catch(err){ alert('Error: '+err.message); }
+}
+async function ownerSuspendProject(projectId, projectName){
+  if(!confirm(`Suspend "${projectName}"? All members will lose access immediately.`)) return;
+  try{
+    await db.from('invites').update({status:'revoked'}).eq('project_id', projectId);
+    await db.from('project_members').delete().eq('project_id', projectId);
+    alert(`✅ "${projectName}" has been suspended. All members removed.`);
+    await loadOwnerContent();
+  }catch(err){ alert('Error: ' + err.message); }
 }
 window.addEventListener('load',()=>{
   init();
