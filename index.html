@@ -326,7 +326,7 @@ function esc(str=''){ return str.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;',
 function setAuthBusy(busy,btnId,label,busyLabel){ const btn=document.getElementById(btnId); if(!btn)return; btn.disabled=busy; btn.textContent=busy?busyLabel:label; }
 
 // ── FORM TOGGLE ─────────────────────────────────────
-function toggleForm(mode){ authMode=mode; hideBox('auth-err'); hideBox('auth-ok'); document.getElementById('form-signin').style.display=mode==='signin'?'block':'none'; document.getElementById('form-signup').style.display=mode==='signup'?'block':'none'; }
+
 
 function showAuth(){ document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-auth').classList.add('active'); }
 function showVerify(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
@@ -354,31 +354,6 @@ async function startSignIn(){
   finally{ setAuthBusy(false,'signin-btn','Sign in with code','Sending...'); }
 }
 
-// ── SIGN UP ──────────────────────────────────────────
-async function startSignUp(){
-  hideBox('auth-err'); hideBox('auth-ok');
-  if(!db) return showError('auth-err','Connection error. Please refresh.');
-  const projectName=document.getElementById('su-project').value.trim();
-  const email=document.getElementById('su-email').value.trim().toLowerCase();
-  const fullName=document.getElementById('su-name').value.trim();
-  const roleTitle=document.getElementById('su-role').value.trim();
-  if(!projectName) return showError('auth-err','Please enter your project / organisation name.');
-  if(!email) return showError('auth-err','Please enter your email address.');
-  if(!fullName) return showError('auth-err','Please enter your full name.');
-  if(!roleTitle) return showError('auth-err','Please enter your role.');
-  authMode='signup';
-  setAuthBusy(true,'signup-btn','Sign up & send code','Sending...');
-  try{
-    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName}}});
-    if(error) throw error;
-    pendingAuth={email,projectName,fullName,roleTitle,mode:'signup'};
-    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
-    for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
-    showVerify();
-    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
-  }catch(err){ showError('auth-err',err.message||'Could not create account.'); }
-  finally{ setAuthBusy(false,'signup-btn','Sign up & send code','Sending...'); }
-}
 
 // ── OTP ──────────────────────────────────────────────
 function otpInput(i,el){ el.value=el.value.replace(/\D/g,''); if(el.value&&i<5) document.getElementById('otp'+(i+1)).focus(); }
