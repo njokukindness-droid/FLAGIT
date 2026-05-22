@@ -1182,15 +1182,14 @@ function closeOwnerDashboard(){
 
 async function loadOwnerContent(){
   try{
-    const {data:projects, error:pErr} = await db.from('projects').select('*').order('created_at', {ascending:false});
-    if(pErr) throw pErr;
+    const {data:projects, error:pErr} = await db.rpc('get_all_projects_owner');
+if(pErr) throw pErr;
 
-    const {data:members, error:mErr} = await db.from('project_members').select('*').order('full_name');
-    if(mErr) throw mErr;
+const {data:members, error:mErr} = await db.rpc('get_all_members_owner');
+if(mErr) throw mErr;
 
-    const {data:invites, error:iErr} = await db.from('invites').select('*').order('created_at', {ascending:false});
-    if(iErr) throw iErr;
-
+const {data:invites, error:iErr} = await db.rpc('get_all_invites_owner');
+if(iErr) throw iErr;
     let html = `
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
         <div class="metric"><div class="lbl">Total Projects</div><div class="val">${projects.length}</div></div>
