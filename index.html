@@ -287,7 +287,7 @@ async function startSignIn(){
   authMode='signin';
   setAuthBusy(true,'signin-btn','Sign in with code','Sending...');
   try{
-    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
+    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error) throw error;
     pendingAuth={email,projectName,fullName:'',roleTitle:'',mode:'signin'};
     document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
