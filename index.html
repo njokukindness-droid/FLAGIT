@@ -340,8 +340,8 @@ async function postVerifyBootstrap(){
   if(projectName){
     project=await getOrCreateProject(projectName,pendingAuth?.mode==='signup');
     if(!project) throw new Error('Project not found. Use "Create account" to register a new project, or check the project name.');
-    const ok=await ensureMembership(project,fullName,roleTitle,pendingAuth?.mode==='signup');
-    if(!ok) throw new Error('Your email is not a member of that project. Check the project name or sign up to create a new one.');
+    const ok=await ensureMembership(project,fullName,roleTitle,true);
+if(!ok) throw new Error('Your email is not a member of that project. Check the project name or sign up to create a new one.');
     localStorage.setItem(`flagit:lastProject:${user.id}`,project.id);
   }
   await startApp(project?.id||null);
