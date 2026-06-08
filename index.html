@@ -531,12 +531,27 @@ async function renderMembers(c){
     const {data:invites}=await db.from('invites').select('*').eq('project_id',currentProject.id).order('created_at',{ascending:false});
 
     let html=`<div class="header-row"><div style="font-size:18px;font-weight:700">Team — ${esc(currentProject.name)}</div>
-      ${isAdmin()?`<button class="btn btn-brand" style="padding:8px 14px" onclick="openInviteModal()">+ Invite member</button>`:''}
+     <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${isAdmin()?`<button class="btn btn-brand" style="padding:8px 14px" onclick="openInviteModal()">+ Invite member</button>`:''}
+        ${isAdmin()?`<label class="btn btn-ghost" style="padding:8px 14px;cursor:pointer">
+          📷 Upload Logo
+          <input type="file" accept="image/*" style="display:none" onchange="uploadOrgLogo(this)" />
+        </label>`:''}
+      </div>
     </div>`;
 
     // Members list
-    html+=`<div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:12px">Active members (${members.length})</div>`;
+   const logoUrl = currentProject.logo_url || null;
+html+=`${logoUrl?`<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:16px">
+  <img src="${logoUrl}" style="height:60px;object-fit:contain;border-radius:8px" alt="Org logo" />
+  <div>
+    <div style="font-weight:700;font-size:16px">${esc(currentProject.name)}</div>
+    <div style="font-size:12px;color:var(--text2)">Organisation logo uploaded</div>
+    ${isAdmin()?`<label style="font-size:12px;color:var(--brand);cursor:pointer;margin-top:4px;display:inline-block">Change logo<input type="file" accept="image/*" style="display:none" onchange="uploadOrgLogo(this)" /></label>`:''}
+  </div>
+</div>`:''}
+<div class="card" style="margin-bottom:14px">
+  <div style="font-weight:700;margin-bottom:12px">Active members (${members.length})</div>`;
     members.forEach(m=>{
       const isMe=m.user_id===currentUser.id;
       html+=`<div class="member-row">
@@ -1009,9 +1024,32 @@ async function generateReport(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,margin=16,contentW=W-margin*2;let y=0;
-  doc.setFillColor(216,90,48);doc.rect(0,0,W,28,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('FLAGIT',margin,12);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('HSE Observation Platform',margin,18);
+  doc.setFillColor(255,255,255);doc.rect(0,0,W,28,'F');
+doc.setDrawColor(226,228,234);doc.rect(0,0,W,28,'S');
+
+// Org logo or name on left
+const projLogo = currentProject.logo_url;
+if(projLogo){
+  try{
+    const imgRes = await fetch(projLogo);
+    const imgBlob = await imgRes.blob();
+    const imgBase64 = await new Promise(r=>{const fr=new FileReader();fr.onloadend=()=>r(fr.result);fr.readAsDataURL(imgBlob);});
+    doc.addImage(imgBase64, 'PNG', margin, 4, 40, 20);
+  }catch(e){
+    doc.setTextColor(26,26,46);doc.setFontSize(14);doc.setFont('helvetica','bold');
+    doc.text(currentProject.name, margin, 16);
+  }
+} else {
+  doc.setTextColor(26,26,46);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(currentProject.name, margin, 16);
+}
+
+// Report title on right
+doc.setTextColor(26,26,46);
+doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('HSE Observation Report',W-margin,12,{align:'right'});
+doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);
+doc.text(`Project: ${currentProject.name}`,W-margin,18,{align:'right'});
+doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`,W-margin,23,{align:'right'});
   doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('HSE Observation Report',W-margin,12,{align:'right'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(`Project: ${currentProject.name}`,W-margin,18,{align:'right'});
   doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`,W-margin,23,{align:'right'});
@@ -1280,6 +1318,36 @@ async function ownerSuspendProject(projectId, projectName){
     await loadOwnerContent();
   }catch(err){ alert('Error: ' + err.message); }
 }
+async function uploadOrgLogo(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 2 * 1024 * 1024) return alert('Logo must be under 2MB');
+  
+  try{
+    const ext = file.name.split('.').pop();
+    const path = `${currentProject.id}/logo.${ext}`;
+    
+    const {error:upErr} = await db.storage.from('org-logos').upload(path, file, {
+      upsert: true,
+      contentType: file.type
+    });
+    if(upErr) throw upErr;
+
+    const {data} = db.storage.from('org-logos').getPublicUrl(path);
+    const logoUrl = data.publicUrl;
+
+    const {error:dbErr} = await db.from('projects').update({logo_url: logoUrl}).eq('id', currentProject.id);
+    if(dbErr) throw dbErr;
+
+    currentProject.logo_url = logoUrl;
+    myProjects = myProjects.map(p => p.id === currentProject.id ? {...p, logo_url: logoUrl} : p);
+
+    alert('✅ Logo uploaded successfully!');
+    renderMembers(document.getElementById('main-content'));
+  }catch(err){
+    alert('Error uploading logo: ' + err.message);
+  }
+}
 window.addEventListener('load',()=>{
   init();
   if('serviceWorker'in navigator){ navigator.serviceWorker.register('/sw.js').then(reg=>console.log('SW registered:',reg.scope)).catch(err=>console.log('SW failed:',err)); }
@@ -1294,18 +1362,33 @@ async function generateNCR(obsId){
   let y = 0;
 
   // ── HEADER ──────────────────────────────────────────
-  doc.setFillColor(216, 90, 48);
-  doc.rect(0, 0, W, 32, 'F');
+  doc.setFillColor(255,255,255);
+doc.rect(0, 0, W, 32, 'F');
+doc.setDrawColor(226,228,234);
+doc.rect(0, 0, W, 32, 'S');
 
-  // Logo area
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FLAGIT', margin, 14);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('HSE Observation Platform', margin, 20);
-  doc.text('getflagit.com', margin, 26);
+const ncrLogo = currentProject.logo_url;
+if(ncrLogo){
+  try{
+    const imgRes = await fetch(ncrLogo);
+    const imgBlob = await imgRes.blob();
+    const imgBase64 = await new Promise(r=>{const fr=new FileReader();fr.onloadend=()=>r(fr.result);fr.readAsDataURL(imgBlob);});
+    doc.addImage(imgBase64, 'PNG', margin, 4, 50, 24);
+  }catch(e){
+    doc.setTextColor(26,26,46);doc.setFontSize(16);doc.setFont('helvetica','bold');
+    doc.text(currentProject.name, margin, 18);
+  }
+} else {
+  doc.setTextColor(26,26,46);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text(currentProject.name, margin, 18);
+}
+
+doc.setTextColor(26,26,46);
+doc.setFontSize(16);doc.setFont('helvetica','bold');
+doc.text('NON-CONFORMANCE REPORT', W-margin, 13, {align:'right'});
+doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);
+doc.text(`NCR Ref: ${obs.ncr_ref || 'NCR-' + obs.id.slice(-6).toUpperCase()}`, W-margin, 20, {align:'right'});
+doc.text(`Date: ${new Date(obs.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`, W-margin, 26, {align:'right'});
 
   // NCR title on right
   doc.setFontSize(16);
