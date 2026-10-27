@@ -1120,22 +1120,22 @@ async function generateDailyReport(dateStr){
     const val=(t,bold=false)=>mkCell(t,{bold,size:16});
 
     // ── TITLE BAR ──────────────────────────────────────────────────
-    const titleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+    const titleTable=new Table({width:{size:mm(396),type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[
       new TableRow({height:{value:mm(12),rule:HeightRule.ATLEAST},children:[
-        new TableCell({children:[new Paragraph({children:[new TextRun({text:orgDisplay,bold:true,size:20,color:WHITE})],alignment:AlignmentType.LEFT})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:25,type:WidthType.PERCENTAGE},margins:{top:mm(2),bottom:mm(2),left:mm(3),right:mm(2)}}),
-        new TableCell({children:[new Paragraph({children:[new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:22,color:WHITE})],alignment:AlignmentType.CENTER}),new Paragraph({children:[new TextRun({text:'HSE OBSERVATION REPORT',bold:true,size:17,color:'B8D4EC'})],alignment:AlignmentType.CENTER})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:50,type:WidthType.PERCENTAGE},margins:m(mm(2))}),
-        new TableCell({children:[new Paragraph({children:[]})],shading:sh(NAVY),borders:noB(),width:{size:25,type:WidthType.PERCENTAGE}}),
+        new TableCell({children:[new Paragraph({children:[new TextRun({text:orgDisplay,bold:true,size:20,color:WHITE})],alignment:AlignmentType.LEFT})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:mm(99),type:WidthType.DXA},margins:{top:mm(2),bottom:mm(2),left:mm(3),right:mm(2)}}),
+        new TableCell({children:[new Paragraph({children:[new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:22,color:WHITE})],alignment:AlignmentType.CENTER}),new Paragraph({children:[new TextRun({text:'HSE OBSERVATION REPORT',bold:true,size:17,color:'B8D4EC'})],alignment:AlignmentType.CENTER})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:mm(198),type:WidthType.DXA},margins:m(mm(2))}),
+        new TableCell({children:[new Paragraph({children:[]})],shading:sh(NAVY),borders:noB(),width:{size:mm(99),type:WidthType.DXA}}),
       ]}),
     ]});
 
     // ── INFO TABLE ─────────────────────────────────────────────────
-    const infoTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+    const infoTable=new Table({width:{size:mm(396),type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[
       new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:['Project / Contract','Location / Plot','Date','Time of Inspection'].map(lbl)}),
       new TableRow({height:{value:mm(7),rule:HeightRule.ATLEAST},children:[val(currentProject.name||'',true),val(projLocation),val(displayDate),val(timeNow)]}),
     ]});
 
     // ── ROLE TABLE ─────────────────────────────────────────────────
-    const roleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+    const roleTable=new Table({width:{size:mm(396),type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[
       new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:['Role','Job Title','Name','Company','Signature','Date'].map(lbl)}),
       new TableRow({height:{value:mm(8),rule:HeightRule.ATLEAST},children:[val('Submitted to'),val('HSE Manager'),val('Abass Afolabi'),val(orgDisplay),val(''),val(displayDate)]}),
       new TableRow({height:{value:mm(8),rule:HeightRule.ATLEAST},children:[val('Prepared by'),val('HSE Engineer'),val('Kindness Njoku'),val(orgDisplay),val(''),val(displayDate)]}),
@@ -1143,26 +1143,42 @@ async function generateDailyReport(dateStr){
 
     // ── HAZARD CODE REFERENCE ──────────────────────────────────────
     const HAZARDS=[['A','Working at Heights'],['B','Ladders/Scaffold'],['C','Lifting Plant & Equip'],['D','Mobile Plant & Vehicle'],['E','Hot Works'],['F','Portable Electrical Equip'],['G','Power Tools/Machinery'],['H','Fire & Explosion'],['I','Chemicals'],['J','Environmental Aspect'],['K','Access & Egress'],['L','Slips, Trips & Falls'],['M','Manual Handling'],['N','Hand Tools'],['O','Excavation'],['P','Emergency Equipment'],['Q','PPE'],['R','Confined Space'],['S','Others']];
-    const hCell=(code,label)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:code+'  ',bold:true,size:13,color:NAVY}),new TextRun({text:label,size:13,color:'2A2A2A'})]})],shading:sh('F5F8FB'),borders:thin('B0C8D8'),margins:{top:mm(0.8),bottom:mm(0.8),left:mm(1.2),right:mm(1.2)}});
-    const hazardTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+    const hCell=(code,label)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:code+'  ',bold:true,size:13,color:NAVY}),new TextRun({text:label,size:13,color:'2A2A2A'})]})],shading:sh('F5F8FB'),borders:thin('B0C8D8'),width:{size:mm(39.6),type:WidthType.DXA},margins:{top:mm(0.8),bottom:mm(0.8),left:mm(1.2),right:mm(1.2)}});
+    const hazardTable=new Table({width:{size:mm(396),type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[
       new TableRow({height:{value:mm(5),rule:HeightRule.ATLEAST},children:[new TableCell({columnSpan:10,children:[new Paragraph({children:[new TextRun({text:'HAZARD CODE REFERENCE',bold:true,size:15,color:WHITE})],alignment:AlignmentType.LEFT})],shading:sh(NAVY),borders:thin(WHITE),margins:{top:mm(1),bottom:mm(1),left:mm(2),right:mm(2)}})]}),
       new TableRow({height:{value:mm(5.5),rule:HeightRule.ATLEAST},children:HAZARDS.slice(0,10).map(([c,l])=>hCell(c,l))}),
       new TableRow({height:{value:mm(5.5),rule:HeightRule.ATLEAST},children:[...HAZARDS.slice(10).map(([c,l])=>hCell(c,l)),hCell('','')]}),
     ]});
 
     // ── OBSERVATION TABLE ──────────────────────────────────────────
-    const OBS_COLS=[{l:['SN'],w:5},{l:['Hazard','Code'],w:8},{l:['Photo','Initial'],w:10},{l:['Hazards / Aspects','& Risk / Impact'],w:22},{l:['Recommended','Corrective Action'],w:22},{l:['Responsible','Person'],w:13},{l:['Cat.'],w:6},{l:['Date to','Complete'],w:10},{l:['Photo','Final'],w:10},{l:['Date','Completed'],w:10}];
-    const cw=OBS_COLS.map(c=>({size:Math.round(c.w*100),type:WidthType.PERCENTAGE}));
+    // A4 landscape body width = 420mm - 24mm margins = 396mm total
+    // Column widths in mm (must sum to 396):
+    // SN=14, HazCode=22, PhotoInit=28, Hazards=80, Action=80, Resp=46, Cat=14, DateComp=28, PhotoFinal=28, DateCompleted=28 → 368mm
+    // Distribute remaining 28mm to Hazards and Action (+14 each → 94 each)
+    const OBS_COLS=[
+      {l:['SN'],           w:mm(14)},
+      {l:['Hazard','Code'],w:mm(22)},
+      {l:['Photo','Initial'],w:mm(28)},
+      {l:['Hazards / Aspects','& Risk / Impact'],w:mm(94)},
+      {l:['Recommended','Corrective Action'],    w:mm(94)},
+      {l:['Responsible','Person'],w:mm(46)},
+      {l:['Cat.'],         w:mm(14)},
+      {l:['Date to','Complete'],  w:mm(28)},
+      {l:['Photo','Final'],w:mm(28)},
+      {l:['Date','Completed'],    w:mm(28)},
+    ];
+    const totalW=mm(396);
+    const cw=OBS_COLS.map(c=>({size:c.w,type:WidthType.DXA}));
     const obsHeader=new TableRow({tableHeader:true,height:{value:mm(10),rule:HeightRule.ATLEAST},children:OBS_COLS.map((col,i)=>new TableCell({children:col.l.map(line=>new Paragraph({children:[new TextRun({text:line,bold:true,size:14,color:WHITE})],alignment:AlignmentType.CENTER})),shading:sh(NAVY),borders:thin(WHITE),verticalAlign:VerticalAlign.CENTER,width:cw[i],margins:{top:mm(1),bottom:mm(1),left:mm(1),right:mm(1)}}))});
     const obsRows=dayObs.map((obs,idx)=>{
       const fill=idx%2===0?WHITE:LGREY;
       const vals=[String(idx+1),obs.hazard_codes||'-','(see photo)',obs.description||'-',obs.recommendation||'-',obs.responsible_person||'-',obs.risk_level||'-',obs.timeframe||'-','(see photo)',obs.status==='Closed'?displayDate:'-'];
       return new TableRow({height:{value:mm(16),rule:HeightRule.ATLEAST},children:vals.map((v,ci)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:String(v),size:15,color:'1A1A1A'})],alignment:ci===0?AlignmentType.CENTER:AlignmentType.LEFT})],shading:sh(fill),borders:thin('9DBDD4'),verticalAlign:VerticalAlign.TOP,width:cw[ci],margins:{top:mm(1.2),bottom:mm(1.2),left:mm(1.2),right:mm(1.2)}}))});
     });
-    const obsTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[obsHeader,...obsRows]});
+    const obsTable=new Table({width:{size:totalW,type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[obsHeader,...obsRows]});
 
     // ── FOOTER ────────────────────────────────────────────────────
-    const footerTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:[mkCell('TASETI/FRM/HSE/019  Rev:-00',{size:13,color:'1A3A5C',fill:NAVY_BG}),mkCell('Page 1 of 1',{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.CENTER}),mkCell(`FLAGIT HSE Observation Platform | ${displayDate}`,{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.RIGHT})]})]});
+    const footerTable=new Table({width:{size:mm(396),type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:[new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:[mkCell('TASETI/FRM/HSE/019  Rev:-00',{size:13,color:'1A3A5C',fill:NAVY_BG,width:{size:mm(132),type:WidthType.DXA}}),mkCell('Page 1 of 1',{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.CENTER,width:{size:mm(132),type:WidthType.DXA}}),mkCell(`FLAGIT HSE Observation Platform | ${displayDate}`,{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.RIGHT,width:{size:mm(132),type:WidthType.DXA}})]})]});
 
     const sp=()=>new Paragraph({children:[],spacing:{before:mm(1.5),after:mm(1.5)}});
     const doc=new Document({sections:[{
