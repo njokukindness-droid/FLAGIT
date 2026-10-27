@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="/docx.iife.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--brand:#D85A30;--brand-dk:#B84A24;--brand-lt:rgba(216,90,48,0.15);--blue:#3B82F6;--blue-lt:rgba(59,130,246,0.15);--green:#22C55E;--green-lt:rgba(34,197,94,0.15);--red:#EF4444;--red-lt:rgba(239,68,68,0.15);--amber:#F59E0B;--amber-lt:rgba(245,158,11,0.15);--purple:#A855F7;--purple-lt:rgba(168,85,247,0.15);--border:#2A2A2A;--surface:#1A1A1A;--surface2:#222222;--text:#F0F0F0;--text2:#888888;--radius:10px;color-scheme:dark}
@@ -505,7 +506,11 @@ function renderFeed(c){
     </button>
     <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateReport()">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      Full Tracker
+      Full Tracker (PDF)
+    </button>
+    <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateExcelTracker()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Full Tracker (Excel)
     </button>
   </div>`;
   if(!observations.length) html+=`<div class="card"><div class="small">No observations yet. Tap + to raise the first flag.</div></div>`;
@@ -528,21 +533,161 @@ function renderFeed(c){
 
 // ── DASHBOARD ─────────────────────────────────────────
 function renderDashboard(c){
-  const statuses=['Open','In Progress','Pending Verification','Closed'];
-  const cats=[...new Set(observations.map(o=>o.category))];
   const total=observations.length;
-  c.innerHTML=`
-    <div class="header-row"><div style="font-size:18px;font-weight:700">Dashboard — ${esc(currentProject.name)}</div></div>
-    <div class="metric-grid">
-      <div class="metric"><div class="lbl">Total flags</div><div class="val">${total}</div></div>
-      <div class="metric"><div class="lbl">Open</div><div class="val">${observations.filter(o=>o.status==='Open').length}</div></div>
-      <div class="metric"><div class="lbl">Unread alerts</div><div class="val">${notifications.filter(n=>!n.is_read).length}</div></div>
-      <div class="metric"><div class="lbl">Photos</div><div class="val">${observations.reduce((a,b)=>a+(b.observation_photos?.length||0),0)}</div></div>
-    </div>
-    <div class="two-col">
-      <div class="card"><div style="font-weight:700;margin-bottom:10px">By status</div>${statuses.map(s=>{const n=observations.filter(o=>o.status===s).length;const pct=total?Math.round(n/total*100):0;return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${s}</span><b>${n}</b></div><div style="height:6px;border-radius:999px;background:var(--surface2)"><div style="height:6px;border-radius:999px;background:var(--brand);width:${pct}%"></div></div></div>`;}).join('')}</div>
-      <div class="card"><div style="font-weight:700;margin-bottom:10px">By category</div>${cats.length?cats.map(cat=>{const n=observations.filter(o=>o.category===cat).length;const pct=total?Math.round(n/total*100):0;return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${esc(cat)}</span><b>${n}</b></div><div style="height:6px;border-radius:999px;background:var(--surface2)"><div style="height:6px;border-radius:999px;background:#185fa5;width:${pct}%"></div></div></div>`;}).join(''):'<div class="small">No data yet.</div>'}</div>
+  const nOpen=observations.filter(o=>o.status==='Open').length;
+  const nProg=observations.filter(o=>o.status==='In Progress').length;
+  const nPendV=observations.filter(o=>o.status==='Pending Verification').length;
+  const nClosed=observations.filter(o=>o.status==='Closed').length;
+  const nHigh=observations.filter(o=>o.risk_level==='High'||o.severity==='High').length;
+  const unread=notifications.filter(n=>!n.is_read).length;
+
+  // Stat tiles
+  const tiles=[
+    {label:'Total',val:total,color:'var(--text)',accent:'var(--border)'},
+    {label:'Open',val:nOpen,color:'var(--red)',accent:'var(--red)'},
+    {label:'In Progress',val:nProg,color:'var(--amber)',accent:'var(--amber)'},
+    {label:'Pending Verification',val:nPendV,color:'var(--purple)',accent:'var(--purple)'},
+    {label:'Closed',val:nClosed,color:'var(--green)',accent:'var(--green)'},
+    {label:'High Risk',val:nHigh,color:'#FF6B35',accent:'#FF6B35'},
+    {label:'Unread Alerts',val:unread,color:'var(--blue)',accent:'var(--blue)'},
+  ];
+
+  // Categories bar chart
+  const CAT_COLORS={'Unsafe Condition':'#EF4444','Unsafe Act':'#F59E0B','Near Miss':'#A855F7','Positive Observation':'#22C55E'};
+  const cats=[...new Set(observations.map(o=>o.category).filter(Boolean))];
+  const catCounts=cats.map(cat=>({cat,n:observations.filter(o=>o.category===cat).length})).sort((a,b)=>b.n-a.n);
+  const maxCat=catCounts[0]?.n||1;
+
+  // Risk level bar chart
+  const RISK_COLORS={High:'#EF4444',Medium:'#F59E0B',Low:'#22C55E'};
+  const risks=[{r:'High',n:nHigh},{r:'Medium',n:observations.filter(o=>(o.risk_level||o.severity)==='Medium').length},{r:'Low',n:observations.filter(o=>(o.risk_level||o.severity)==='Low').length}];
+  const maxRisk=risks[0]?.n||1;
+
+  // Donut SVG for status
+  const donutData=[
+    {label:'Open',n:nOpen,color:'#EF4444'},
+    {label:'In Progress',n:nProg,color:'#F59E0B'},
+    {label:'Pending',n:nPendV,color:'#A855F7'},
+    {label:'Closed',n:nClosed,color:'#22C55E'},
+  ].filter(d=>d.n>0);
+  const R=52,cx=70,cy=70,strokeW=18;
+  const circ=2*Math.PI*R;
+  let offset=0;
+  const donutSegs=donutData.map(d=>{
+    const pct=total?d.n/total:0;
+    const dash=pct*circ;
+    const gap=circ-dash;
+    const seg=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${d.color}" stroke-width="${strokeW}" stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})" />`;
+    offset+=dash;
+    return seg;
+  }).join('');
+  const donutSvg=`<svg width="140" height="140" viewBox="0 0 140 140">${donutSegs}<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="22" font-weight="700" fill="#F0F0F0">${total}</text><text x="${cx}" y="${cy+20}" text-anchor="middle" font-size="10" fill="#888">Total</text></svg>`;
+  const donutLegend=donutData.map(d=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><div style="width:10px;height:10px;border-radius:50%;background:${d.color};flex-shrink:0"></div><span style="font-size:12px;flex:1">${d.label}</span><b style="font-size:12px">${d.n}</b></div>`).join('');
+
+  // Recent observations
+  const recent=[...observations].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+  const recentHtml=recent.length?recent.map(o=>{
+    const statusColor={'Open':'var(--red)','In Progress':'var(--amber)','Pending Verification':'var(--purple)','Closed':'var(--green)'}[o.status]||'var(--text2)';
+    return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)" onclick="openObservation('${o.id}')" style="cursor:pointer">
+      <div style="width:8px;height:8px;border-radius:50%;background:${statusColor};margin-top:5px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(o.title||o.description||'Observation')}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${formatDate(o.created_at)} · ${esc(o.status)}</div>
+      </div>
     </div>`;
+  }).join(''):`<div class="small" style="padding:12px 0">No observations yet.</div>`;
+
+  // Recent alerts
+  const recentAlerts=notifications.slice(0,5);
+  const alertsHtml=recentAlerts.length?recentAlerts.map(n=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+    <div style="width:8px;height:8px;border-radius:50%;background:${n.is_read?'var(--text2)':'var(--red)'};margin-top:5px;flex-shrink:0"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600">${esc(n.title||'Alert')}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${formatDate(n.created_at)}</div>
+    </div>
+  </div>`).join(''):`<div class="small" style="padding:12px 0">No alerts.</div>`;
+
+  c.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:19px;font-weight:700">${esc(currentProject.name)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">HSE Observation Dashboard</div>
+      </div>
+    </div>
+
+    <!-- STAT TILES -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      ${tiles.slice(0,4).map(t=>`<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ${t.accent};border-radius:10px;padding:14px 12px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">${t.label}</div>
+        <div style="font-size:28px;font-weight:800;color:${t.color};line-height:1">${t.val}</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      ${tiles.slice(4).map(t=>`<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ${t.accent};border-radius:10px;padding:14px 12px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">${t.label}</div>
+        <div style="font-size:28px;font-weight:800;color:${t.color};line-height:1">${t.val}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+
+      <!-- Category bar chart -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text)">Observations by Category</div>
+        ${catCounts.length?catCounts.map(({cat,n})=>{
+          const pct=Math.round(n/maxCat*100);
+          const col=CAT_COLORS[cat]||'var(--brand)';
+          return`<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+              <span style="color:var(--text)">${esc(cat)}</span>
+              <b style="color:${col}">${n}</b>
+            </div>
+            <div style="height:7px;border-radius:999px;background:var(--surface2)">
+              <div style="height:7px;border-radius:999px;background:${col};width:${pct}%;transition:width .4s"></div>
+            </div>
+          </div>`;
+        }).join(''):'<div class="small">No data yet.</div>'}
+        ${risks.map(({r,n})=>{
+          const pct=Math.round(n/Math.max(maxRisk,1)*100);
+          const col=RISK_COLORS[r]||'var(--text2)';
+          return`<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+              <span style="color:var(--text2);font-size:11px">Risk: ${r}</span>
+              <b style="color:${col};font-size:12px">${n}</b>
+            </div>
+            <div style="height:5px;border-radius:999px;background:var(--surface2)">
+              <div style="height:5px;border-radius:999px;background:${col};width:${pct}%;opacity:.7;transition:width .4s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Status donut -->
+      <div class="card" style="display:flex;flex-direction:column">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">Status Breakdown</div>
+        <div style="display:flex;align-items:center;gap:16px;flex:1">
+          <div style="flex-shrink:0">${donutSvg}</div>
+          <div style="flex:1">${donutLegend}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT ACTIVITY + ALERTS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Recent Observations</div>
+        ${recentHtml}
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:13px;font-weight:700">Alerts</div>
+          ${unread?`<div class="notification-dot">${unread}</div>`:''}
+        </div>
+        ${alertsHtml}
+      </div>
+    </div>
+  `;
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────
@@ -1218,10 +1363,10 @@ async function generateReport(){
 
   let y=18;
   const cols=[
-    {h:'Obs No',w:12},{h:'Date',w:20},{h:'Time',w:14},{h:'Location',w:22},
-    {h:'Observer',w:24},{h:'Category',w:24},{h:'Risk\nLevel',w:14},{h:'Hazard\nCodes',w:18},
-    {h:'Description / Hazards',w:48},{h:'Recommended Action',w:40},
-    {h:'Responsible\nPerson',w:22},{h:'Status',w:16},{h:'NCR Ref',w:14}
+    {h:'Obs No.',w:12},{h:'Date',w:20},{h:'Time',w:14},{h:'Location',w:24},
+    {h:'Observer',w:24},{h:'Category',w:24},{h:'Risk\nLevel',w:14},
+    {h:'Description',w:50},{h:'Action Taken /\nResponse',w:40},
+    {h:'Responsible\nPerson',w:26},{h:'Status',w:16},{h:'Evidence Ref\n(Photo/Video)',w:20}
   ];
 
   let hx=margin;
@@ -1261,11 +1406,12 @@ async function generateReport(){
     const obsDate=obs.created_at?new Date(obs.created_at).toLocaleDateString('en-GB'):'';
     const obsTime=obs.created_at?new Date(obs.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
     const rl=obs.risk_level||obs.severity||'';
+    const evidenceRef=obs.observation_photos?.length?`${obs.observation_photos.length} photo(s)`:'-';
     const vals=[
       String(idx+1),obsDate,obsTime,obs.location||'-',obs.reporter_name||'-',
-      obs.category||'-',RISK_LABEL[rl]||rl,obs.hazard_codes||'-',
-      obs.description||'-',obs.recommendation||'-',
-      obs.responsible_person||'-',obs.status||'-',obs.ncr_ref||'-'
+      obs.category||'-',RISK_LABEL[rl]||rl,
+      obs.description||'-',obs.action_taken||obs.recommendation||'-',
+      obs.responsible_person||'-',obs.status||'-',evidenceRef
     ];
     let cx=margin;
     vals.forEach((val,vi)=>{
@@ -1288,6 +1434,66 @@ async function generateReport(){
     doc.text(`Total: ${observations.length} observations`,W-margin,H-3.5,{align:'right'});
   }
   doc.save(`HSE_Tracker_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ── EXCEL FULL TRACKER ───────────────────────────────
+async function generateExcelTracker(){
+  // Build a CSV and trigger download as .xlsx-compatible CSV
+  // Uses SheetJS if available, else falls back to plain CSV
+  const RISK_LABEL={'1':'High','2':'Medium','3':'Low','High':'High','Medium':'Medium','Low':'Low'};
+  const headers=['Obs No.','Date','Time','Location','Observer','Category','Risk Level','Description','Action Taken/Response','Responsible Person','Status','Evidence Ref (Photo/Video)'];
+  const rows=observations.map((obs,idx)=>{
+    const d=obs.created_at?new Date(obs.created_at):null;
+    const obsDate=d?d.toLocaleDateString('en-GB'):'';
+    const obsTime=d?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+    const rl=obs.risk_level||obs.severity||'';
+    const evidenceRef=obs.observation_photos?.length?`${obs.observation_photos.length} photo(s)`:'';
+    return[
+      idx+1,obsDate,obsTime,obs.location||'',obs.reporter_name||'',
+      obs.category||'',RISK_LABEL[rl]||rl,
+      obs.description||'',obs.action_taken||obs.recommendation||'',
+      obs.responsible_person||'',obs.status||'',evidenceRef
+    ];
+  });
+
+  // Try SheetJS (XLSX) if loaded, else CSV
+  if(window.XLSX){
+    const wb=window.XLSX.utils.book_new();
+    const wsData=[headers,...rows];
+    const ws=window.XLSX.utils.aoa_to_sheet(wsData);
+    // Column widths
+    ws['!cols']=[{wch:8},{wch:12},{wch:8},{wch:18},{wch:18},{wch:20},{wch:10},{wch:40},{wch:35},{wch:20},{wch:16},{wch:18}];
+    window.XLSX.utils.book_append_sheet(wb,ws,'Observation Log');
+    // Dashboard summary sheet
+    const statuses=['Open','In Progress','Pending Verification','Closed'];
+    const risks=['High','Medium','Low'];
+    const cats=[...new Set(observations.map(o=>o.category).filter(Boolean))];
+    const dash=[
+      ['HSE OBSERVATION TRACKER — DASHBOARD'],['Project:',currentProject.name],['Generated:',new Date().toLocaleDateString('en-GB')],[''],
+      ['SUMMARY','Count'],
+      ['Total Observations',observations.length],
+      ...statuses.map(s=>[s,observations.filter(o=>o.status===s).length]),
+      [''],['BY RISK LEVEL','Count'],
+      ...risks.map(r=>[r,observations.filter(o=>(o.risk_level||o.severity)===r).length]),
+      [''],['BY CATEGORY','Count'],
+      ...cats.map(cat=>[cat,observations.filter(o=>o.category===cat).length]),
+    ];
+    const ws2=window.XLSX.utils.aoa_to_sheet(dash);
+    ws2['!cols']=[{wch:28},{wch:12}];
+    window.XLSX.utils.book_append_sheet(wb,ws2,'Dashboard');
+    window.XLSX.writeFile(wb,`HSE_Observation_Tracker_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    return;
+  }
+
+  // Fallback: CSV download
+  const escape=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const csvLines=[headers.map(escape).join(','),...rows.map(r=>r.map(escape).join(','))];
+  const blob=new Blob([csvLines.join('\r\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`HSE_Observation_Tracker_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── PWA INSTALL ──────────────────────────────────────
