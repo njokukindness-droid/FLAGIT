@@ -14,7 +14,7 @@
 <title>FLAGIT — HSE Observation Platform</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.umd.cjs"></script>
+<script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--brand:#D85A30;--brand-dk:#B84A24;--brand-lt:rgba(216,90,48,0.15);--blue:#3B82F6;--blue-lt:rgba(59,130,246,0.15);--green:#22C55E;--green-lt:rgba(34,197,94,0.15);--red:#EF4444;--red-lt:rgba(239,68,68,0.15);--amber:#F59E0B;--amber-lt:rgba(245,158,11,0.15);--purple:#A855F7;--purple-lt:rgba(168,85,247,0.15);--border:#2A2A2A;--surface:#1A1A1A;--surface2:#222222;--text:#F0F0F0;--text2:#888888;--radius:10px;color-scheme:dark}
@@ -1075,7 +1075,7 @@ function showDailyReportPicker(){
   picker.id='daily-report-picker';
   picker.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:320px;z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.35)';
   const today=new Date().toISOString().slice(0,10);
-  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select the date to generate PDF for</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button><button class="btn btn-brand" style="flex:2" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">Generate PDF</button></div>`;
+  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select the date to generate Word report for</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button><button class="btn btn-brand" style="flex:2" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">Generate Word (.docx)</button></div>`;
   document.body.appendChild(picker);
 }
 
