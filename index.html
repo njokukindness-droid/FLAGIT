@@ -9,37 +9,37 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<meta name="theme-color" content="#0B1622" />
+<meta name="theme-color" content="#0D0D0D" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <title>FLAGIT — HSE Observation Platform</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --brand:#0DBF80;--brand-dk:#09996A;--brand-lt:rgba(13,191,128,0.12);
+  --brand:#D85A30;--brand-dk:#B84A24;--brand-lt:rgba(216,90,48,0.12);
   --blue:#2E7DD6;--blue-lt:rgba(46,125,214,0.12);
-  --green:#0DBF80;--green-lt:rgba(13,191,128,0.12);
+  --green:#22C55E;--green-lt:rgba(34,197,94,0.12);
   --red:#f87171;--red-lt:rgba(248,113,113,0.12);
-  --amber:#D4920A;--amber-lt:rgba(212,146,10,0.12);
+  --amber:#F59E0B;--amber-lt:rgba(245,158,11,0.12);
   --purple:#9B5DE5;--purple-lt:rgba(155,93,229,0.12);
-  --border:#1C3350;--surface:#0F1E2E;--surface2:#142438;
-  --text:#D8E8F2;--text2:#6A90B0;--radius:10px;
+  --border:#2A2A2A;--surface:#1A1A1A;--surface2:#222222;
+  --text:#F0F0F0;--text2:#888888;--radius:10px;
   color-scheme:dark;
 }
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0B1622;color:#D8E8F2;min-height:100vh}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0D0D0D;color:#F0F0F0;min-height:100vh}
 input,select,textarea,button{font-family:inherit}
 input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none;transition:border-color .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--brand)}
-select option{background:#0F1E2E}
+select option{background:#1A1A1A}
 button{cursor:pointer}
 .screen{display:none;min-height:100vh}.screen.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
 .btn{padding:11px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600;transition:opacity .15s}
-.btn-brand{background:var(--brand);color:#0B1622;font-weight:700}.btn-brand:disabled{opacity:.45;cursor:not-allowed}
+.btn-brand{background:var(--brand);color:#0D0D0D;font-weight:700}.btn-brand:disabled{opacity:.45;cursor:not-allowed}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--brand);color:var(--brand)}
-.btn-green{background:var(--green);color:#0B1622;font-weight:700}
+.btn-green{background:var(--green);color:#0D0D0D;font-weight:700}
 .btn-red{background:var(--red-lt);color:var(--red);border:1px solid rgba(248,113,113,.3)}
 .field-label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;letter-spacing:.03em}
 .error-box{font-size:13px;color:var(--red);background:var(--red-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
@@ -61,7 +61,7 @@ button{cursor:pointer}
 .section-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
 .tag-box{background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--border)}
 .comments .row{display:flex;gap:8px;margin-bottom:12px}.bubble{flex:1;background:var(--surface2);border-radius:8px;padding:8px 10px;border:1px solid var(--border)}
-.fab{position:fixed;right:16px;bottom:72px;width:56px;height:56px;border-radius:50%;background:var(--brand);color:#0B1622;border:none;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(13,191,128,.4);z-index:65;font-weight:700}
+.fab{position:fixed;right:16px;bottom:72px;width:56px;height:56px;border-radius:50%;background:var(--brand);color:#0D0D0D;border:none;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(216,90,48,.4);z-index:65;font-weight:700}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:80;align-items:flex-end}.modal{background:var(--surface);width:100%;max-height:94vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px 28px;border-top:1px solid var(--border)}.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
 .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer}
 .upload-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;margin-bottom:14px}.upload-chip{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--brand);background:var(--surface2)}
@@ -80,19 +80,19 @@ button{cursor:pointer}
 .invite-row{display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)}
 @media(max-width:700px){.metric-grid{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
 .presence-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
-.presence-online{background:var(--green);box-shadow:0 0 0 0 rgba(13,191,128,0.5);animation:pulse-green 1.5s infinite}
+.presence-online{background:var(--green);box-shadow:0 0 0 0 rgba(34,197,94,0.5);animation:pulse-green 1.5s infinite}
 .presence-offline{background:#374151}
-@keyframes pulse-green{0%{box-shadow:0 0 0 0 rgba(13,191,128,0.5)}70%{box-shadow:0 0 0 6px rgba(13,191,128,0)}100%{box-shadow:0 0 0 0 rgba(13,191,128,0)}}
+@keyframes pulse-green{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}70%{box-shadow:0 0 0 6px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 </style>
 </head>
 <body>
 
 <!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(13,191,128,0.07) 0%,transparent 60%),#0B1622">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(216,90,48,0.08) 0%,transparent 60%),#0D0D0D">
     <div style="width:100%;max-width:430px">
       <div style="text-align:center;margin-bottom:24px">
-        <div class="logo-icon"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="#0B1622"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="#0B1622" opacity=".7"/></svg></div>
+        <div class="logo-icon"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="#0D0D0D"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="#0D0D0D" opacity=".7"/></svg></div>
         <div class="wordmark">FLAG<span>IT</span></div>
         <div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>
       </div>
@@ -117,7 +117,7 @@ button{cursor:pointer}
 
 <!-- VERIFY SCREEN -->
 <div class="screen" id="screen-verify">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(13,191,128,0.07) 0%,transparent 60%),#0B1622">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(216,90,48,0.08) 0%,transparent 60%),#0D0D0D">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:22px">
         <div style="width:52px;height:52px;border-radius:50%;background:var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" fill="none" stroke="var(--brand)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
