@@ -1170,8 +1170,7 @@ async function generateDailyReport(dateStr){
       children:[titleTable,sp(),infoTable,sp(),roleTable,sp(),hazardTable,sp(),obsTable,sp(),footerTable],
     }]});
 
-    const buf=await Packer.toBuffer(doc);
-    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const blob=await Packer.toBlob(doc);
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     const d=dateStr.replace(/-/g,'');
