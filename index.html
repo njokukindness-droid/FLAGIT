@@ -14,6 +14,7 @@
 <title>FLAGIT — HSE Observation Platform</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.umd.cjs"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--brand:#D85A30;--brand-dk:#B84A24;--brand-lt:rgba(216,90,48,0.15);--blue:#3B82F6;--blue-lt:rgba(59,130,246,0.15);--green:#22C55E;--green-lt:rgba(34,197,94,0.15);--red:#EF4444;--red-lt:rgba(239,68,68,0.15);--amber:#F59E0B;--amber-lt:rgba(245,158,11,0.15);--purple:#A855F7;--purple-lt:rgba(168,85,247,0.15);--border:#2A2A2A;--surface:#1A1A1A;--surface2:#222222;--text:#F0F0F0;--text2:#888888;--radius:10px;color-scheme:dark}
@@ -1081,163 +1082,109 @@ function showDailyReportPicker(){
 async function generateDailyReport(dateStr){
   document.getElementById('daily-report-picker')?.remove();
   if(!dateStr){ alert('Please select a date'); return; }
-  const {jsPDF}=window.jspdf;
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
 
-  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  const W=297,H=210,margin=10,contentW=W-margin*2;
-  const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-  const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
-  const preparedBy='Kindness Njoku';
-  const submittedTo='Abass Afolabi';
-  const projName=currentProject.name||'';
-  const projLocation=currentProject.location||dayObs[0]?.location||'Site';
+  const btn=document.querySelector('[onclick="showDailyReportPicker()"]');
+  const origText=btn?.textContent;
+  if(btn){ btn.textContent='Generating…'; btn.disabled=true; }
 
-  function addPageHeader(doc,pageNum){
-    doc.setFillColor(0,70,127); doc.rect(0,0,W,12,'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-    doc.text('HEALTH, SAFETY AND ENVIRONMENT',W/2,5.5,{align:'center'});
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text(orgName,margin,5.5);
-    doc.text('HSE OBSERVATION REPORT',W/2,9.5,{align:'center'});
+  try{
+    const docx=window.docx;
+    if(!docx){ throw new Error('docx library not loaded — please refresh and try again'); }
+    const {
+      Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,
+      WidthType,AlignmentType,ShadingType,BorderStyle,VerticalAlign,
+      HeightRule,TableLayoutType,convertInchesToTwip,
+    }=docx;
 
-    let y=16;
-    const r1cols=[{label:'Project / Contract',val:projName,w:70},{label:'Location / Plot',val:projLocation,w:55},{label:'Date',val:displayDate,w:45},{label:'Time of Inspection',val:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),w:0}];
-    let x=margin;
-    r1cols.forEach((c,i)=>{
-      const cw=c.w||(contentW-x+margin);
-      doc.setFillColor(220,230,242); doc.rect(x,y,cw,5,'F');
-      doc.setFillColor(245,248,252); doc.rect(x,y+5,cw,6,'F');
-      doc.setTextColor(30,30,30); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
-      doc.text(c.label,x+2,y+3.5);
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
-      doc.text(c.val,x+2,y+9.5);
-      doc.setDrawColor(180,190,210); doc.rect(x,y,cw,11,'S');
-      x+=cw;
-    });
-    y+=14;
+    const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+    const timeNow=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const orgDisplay=(currentProject.org_name||currentProject.name||'TASETI').toUpperCase();
+    const projLocation=currentProject.location||dayObs[0]?.location||'Site';
 
-    const roleRows=[{role:'Submitted to',name:submittedTo,title:'HSE Manager'},{role:'Prepared by',name:preparedBy,title:'HSE Engineer'}];
-    ['Role','Job Title','Name','Company','Signature','Date'].forEach((h,i)=>{
-      const colWidths=[22,28,40,40,30,20]; const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
-      doc.setFillColor(220,230,242); doc.rect(hx,y,colWidths[i],5,'F');
-      doc.setTextColor(30,30,30); doc.setFontSize(6); doc.setFont('helvetica','bold');
-      doc.text(h,hx+1,y+3.5);
-    });
-    y+=5;
-    const colWidths=[22,28,40,40,30,20];
-    roleRows.forEach(row=>{
-      const vals=[row.role,row.title,row.name,orgName,'',displayDate];
-      vals.forEach((v,i)=>{
-        const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
-        doc.setFillColor(252,253,255); doc.rect(hx,y,colWidths[i],6,'F');
-        doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],6,'S');
-        doc.setTextColor(30,30,30); doc.setFontSize(7); doc.setFont('helvetica','normal');
-        doc.text(v,hx+1,y+4);
-      });
-      y+=6;
-    });
-    y+=4;
+    const mm=v=>Math.round(v*56.693);
+    const NAVY='004680',NAVY_BG='D6E4F0',WHITE='FFFFFF',LGREY='EEF2F6';
+    const thin=(c='8CAFC8')=>{const s={style:BorderStyle.SINGLE,size:4,color:c};return{top:s,bottom:s,left:s,right:s};};
+    const noB=()=>{const s={style:BorderStyle.NONE,size:0,color:'auto'};return{top:s,bottom:s,left:s,right:s};};
+    const sh=f=>({fill:f,type:ShadingType.CLEAR,color:'auto'});
+    const m=(t=mm(1.5))=>({top:t,bottom:t,left:t,right:t});
 
-    const HAZARD_FULL={A:'Working at Heights',B:'Ladders/Scaffold',C:'Lifting Plant & Equip',D:'Mobile Plant & Vehicle',E:'Hot Works',F:'Portable Electrical Equip',G:'Power Tools/Machinery',H:'Fire & Explosion',I:'Chemicals',J:'Environmental Aspect',K:'Access & Egress',L:'Slips, Trips & Falls',M:'Manual Handling',N:'Hand Tools',O:'Excavation',P:'Emergency Equipment',Q:'PPE',R:'Confined Space',S:'Others'};
-    doc.setFillColor(220,230,242); doc.rect(margin,y,contentW,5,'F');
-    doc.setTextColor(30,30,30); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
-    doc.text('HAZARD CODE REFERENCE',margin+2,y+3.5);
-    y+=5;
-    const codes=Object.keys(HAZARD_FULL); const perRow=Math.ceil(codes.length/2);
-    [codes.slice(0,perRow),codes.slice(perRow)].forEach((row,ri)=>{
-      const cellW=contentW/perRow;
-      row.forEach((code,ci)=>{
-        const cx=margin+ci*cellW;
-        doc.setFillColor(ri%2===0?248:252,ri%2===0?249:253,ri%2===0?252:255);
-        doc.rect(cx,y,cellW,4.5,'F');
-        doc.setDrawColor(200,210,225); doc.rect(cx,y,cellW,4.5,'S');
-        doc.setTextColor(0,70,127); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
-        doc.text(code,cx+1,y+2.8);
-        doc.setTextColor(40,40,40); doc.setFont('helvetica','normal');
-        doc.text(HAZARD_FULL[code],cx+5,y+2.8);
-      });
-      y+=4.5;
-    });
-    y+=3;
-    return y;
-  }
-
-  const colDefs=[
-    {h:'SN',w:8},{h:'Hazard\nCode',w:14},{h:'Photo\nInitial',w:18},{h:'Hazards / Aspects\n& Risk / Impact',w:40},
-    {h:'Recommended\nCorrective Action',w:40},{h:'Responsible\nPerson',w:24},{h:'Cat.',w:10},
-    {h:'Date to\nComplete',w:20},{h:'Photo\nFinal',w:18},{h:'Date\nCompleted',w:20}
-  ];
-
-  let y=addPageHeader(doc,1);
-  let hx=margin;
-  colDefs.forEach(col=>{
-    doc.setFillColor(0,70,127); doc.rect(hx,y,col.w,8,'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
-    const lines=col.h.split('\n');
-    if(lines.length>1){
-      doc.text(lines[0],hx+col.w/2,y+2.8,{align:'center'});
-      doc.text(lines[1],hx+col.w/2,y+5.8,{align:'center'});
-    } else {
-      doc.text(col.h,hx+col.w/2,y+4.5,{align:'center'});
+    function mkCell(text,{bold=false,size=16,color='1A1A1A',fill=WHITE,colSpan=1,align=AlignmentType.LEFT,vAlign=VerticalAlign.CENTER,borders=thin(),width=null}={}){
+      const runs=Array.isArray(text)?text.map(r=>new TextRun({text:String(r.text??''),bold:r.bold??bold,size,color:r.color??color})):[new TextRun({text:String(text??''),bold,size,color})];
+      const o={children:[new Paragraph({children:runs,alignment:align})],shading:sh(fill),verticalAlign:vAlign,borders,columnSpan:colSpan,margins:m(mm(1.2))};
+      if(width)o.width=width;
+      return new TableCell(o);
     }
-    hx+=col.w;
-  });
-  y+=8;
+    const lbl=t=>mkCell(t,{bold:true,size:14,color:'1A3A5C',fill:NAVY_BG,borders:thin('8CAFC8')});
+    const val=(t,bold=false)=>mkCell(t,{bold,size:16});
 
-  dayObs.forEach((obs,idx)=>{
-    const rowH=16;
-    if(y+rowH>H-14){
-      doc.addPage();
-      y=addPageHeader(doc,doc.internal.getNumberOfPages());
-      let hx2=margin;
-      colDefs.forEach(col=>{
-        doc.setFillColor(0,70,127); doc.rect(hx2,y,col.w,8,'F');
-        doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
-        const lines=col.h.split('\n');
-        if(lines.length>1){ doc.text(lines[0],hx2+col.w/2,y+2.8,{align:'center'}); doc.text(lines[1],hx2+col.w/2,y+5.8,{align:'center'}); }
-        else { doc.text(col.h,hx2+col.w/2,y+4.5,{align:'center'}); }
-        hx2+=col.w;
-      });
-      y+=8;
-    }
-    const bg=idx%2===0?[249,251,255]:[255,255,255];
-    doc.setFillColor(...bg); doc.rect(margin,y,contentW,rowH,'F');
-    doc.setDrawColor(200,210,225);
-    const vals=[
-      String(idx+1),
-      obs.hazard_codes||'-',
-      '(see photo)',
-      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).slice(0,4).join('\n'),
-      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).slice(0,4).join('\n'),
-      obs.responsible_person||'-',
-      obs.risk_level||'-',
-      obs.timeframe||'-',
-      '(see photo)',
-      obs.closeout_action?displayDate:'-'
-    ];
-    let cx=margin;
-    vals.forEach((val,vi)=>{
-      doc.rect(cx,y,colDefs[vi].w,rowH,'S');
-      doc.setTextColor(30,30,30); doc.setFontSize(5.5); doc.setFont('helvetica','normal');
-      const txtLines=String(val).split('\n');
-      txtLines.forEach((line,li)=>{ doc.text(line,cx+1,y+3+li*3.2); });
-      cx+=colDefs[vi].w;
+    // ── TITLE BAR ──────────────────────────────────────────────────
+    const titleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+      new TableRow({height:{value:mm(12),rule:HeightRule.ATLEAST},children:[
+        new TableCell({children:[new Paragraph({children:[new TextRun({text:orgDisplay,bold:true,size:20,color:WHITE})],alignment:AlignmentType.LEFT})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:25,type:WidthType.PERCENTAGE},margins:{top:mm(2),bottom:mm(2),left:mm(3),right:mm(2)}}),
+        new TableCell({children:[new Paragraph({children:[new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:22,color:WHITE})],alignment:AlignmentType.CENTER}),new Paragraph({children:[new TextRun({text:'HSE OBSERVATION REPORT',bold:true,size:17,color:'B8D4EC'})],alignment:AlignmentType.CENTER})],shading:sh(NAVY),borders:noB(),verticalAlign:VerticalAlign.CENTER,width:{size:50,type:WidthType.PERCENTAGE},margins:m(mm(2))}),
+        new TableCell({children:[new Paragraph({children:[]})],shading:sh(NAVY),borders:noB(),width:{size:25,type:WidthType.PERCENTAGE}}),
+      ]}),
+    ]});
+
+    // ── INFO TABLE ─────────────────────────────────────────────────
+    const infoTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+      new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:['Project / Contract','Location / Plot','Date','Time of Inspection'].map(lbl)}),
+      new TableRow({height:{value:mm(7),rule:HeightRule.ATLEAST},children:[val(currentProject.name||'',true),val(projLocation),val(displayDate),val(timeNow)]}),
+    ]});
+
+    // ── ROLE TABLE ─────────────────────────────────────────────────
+    const roleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+      new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:['Role','Job Title','Name','Company','Signature','Date'].map(lbl)}),
+      new TableRow({height:{value:mm(8),rule:HeightRule.ATLEAST},children:[val('Submitted to'),val('HSE Manager'),val('Abass Afolabi'),val(orgDisplay),val(''),val(displayDate)]}),
+      new TableRow({height:{value:mm(8),rule:HeightRule.ATLEAST},children:[val('Prepared by'),val('HSE Engineer'),val('Kindness Njoku'),val(orgDisplay),val(''),val(displayDate)]}),
+    ]});
+
+    // ── HAZARD CODE REFERENCE ──────────────────────────────────────
+    const HAZARDS=[['A','Working at Heights'],['B','Ladders/Scaffold'],['C','Lifting Plant & Equip'],['D','Mobile Plant & Vehicle'],['E','Hot Works'],['F','Portable Electrical Equip'],['G','Power Tools/Machinery'],['H','Fire & Explosion'],['I','Chemicals'],['J','Environmental Aspect'],['K','Access & Egress'],['L','Slips, Trips & Falls'],['M','Manual Handling'],['N','Hand Tools'],['O','Excavation'],['P','Emergency Equipment'],['Q','PPE'],['R','Confined Space'],['S','Others']];
+    const hCell=(code,label)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:code+'  ',bold:true,size:13,color:NAVY}),new TextRun({text:label,size:13,color:'2A2A2A'})]})],shading:sh('F5F8FB'),borders:thin('B0C8D8'),margins:{top:mm(0.8),bottom:mm(0.8),left:mm(1.2),right:mm(1.2)}});
+    const hazardTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[
+      new TableRow({height:{value:mm(5),rule:HeightRule.ATLEAST},children:[new TableCell({columnSpan:10,children:[new Paragraph({children:[new TextRun({text:'HAZARD CODE REFERENCE',bold:true,size:15,color:WHITE})],alignment:AlignmentType.LEFT})],shading:sh(NAVY),borders:thin(WHITE),margins:{top:mm(1),bottom:mm(1),left:mm(2),right:mm(2)}})]}),
+      new TableRow({height:{value:mm(5.5),rule:HeightRule.ATLEAST},children:HAZARDS.slice(0,10).map(([c,l])=>hCell(c,l))}),
+      new TableRow({height:{value:mm(5.5),rule:HeightRule.ATLEAST},children:[...HAZARDS.slice(10).map(([c,l])=>hCell(c,l)),hCell('','')]}),
+    ]});
+
+    // ── OBSERVATION TABLE ──────────────────────────────────────────
+    const OBS_COLS=[{l:['SN'],w:5},{l:['Hazard','Code'],w:8},{l:['Photo','Initial'],w:10},{l:['Hazards / Aspects','& Risk / Impact'],w:22},{l:['Recommended','Corrective Action'],w:22},{l:['Responsible','Person'],w:13},{l:['Cat.'],w:6},{l:['Date to','Complete'],w:10},{l:['Photo','Final'],w:10},{l:['Date','Completed'],w:10}];
+    const cw=OBS_COLS.map(c=>({size:Math.round(c.w*100),type:WidthType.PERCENTAGE}));
+    const obsHeader=new TableRow({tableHeader:true,height:{value:mm(10),rule:HeightRule.ATLEAST},children:OBS_COLS.map((col,i)=>new TableCell({children:col.l.map(line=>new Paragraph({children:[new TextRun({text:line,bold:true,size:14,color:WHITE})],alignment:AlignmentType.CENTER})),shading:sh(NAVY),borders:thin(WHITE),verticalAlign:VerticalAlign.CENTER,width:cw[i],margins:{top:mm(1),bottom:mm(1),left:mm(1),right:mm(1)}}))});
+    const obsRows=dayObs.map((obs,idx)=>{
+      const fill=idx%2===0?WHITE:LGREY;
+      const vals=[String(idx+1),obs.hazard_codes||'-','(see photo)',obs.description||'-',obs.recommendation||'-',obs.responsible_person||'-',obs.risk_level||'-',obs.timeframe||'-','(see photo)',obs.status==='Closed'?displayDate:'-'];
+      return new TableRow({height:{value:mm(16),rule:HeightRule.ATLEAST},children:vals.map((v,ci)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:String(v),size:15,color:'1A1A1A'})],alignment:ci===0?AlignmentType.CENTER:AlignmentType.LEFT})],shading:sh(fill),borders:thin('9DBDD4'),verticalAlign:VerticalAlign.TOP,width:cw[ci],margins:{top:mm(1.2),bottom:mm(1.2),left:mm(1.2),right:mm(1.2)}}))});
     });
-    y+=rowH;
-  });
+    const obsTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[obsHeader,...obsRows]});
 
-  const pages=doc.internal.getNumberOfPages();
-  for(let i=1;i<=pages;i++){
-    doc.setPage(i);
-    doc.setFillColor(220,230,242); doc.rect(0,H-8,W,8,'F');
-    doc.setTextColor(50,50,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
-    doc.text('TASETI/FRM/HSE/019  Rev:-00',margin,H-3.5);
-    doc.text(`Page ${i} of ${pages}`,W/2,H-3.5,{align:'center'});
-    doc.text(`FLAGIT HSE Observation Platform | ${displayDate}`,W-margin,H-3.5,{align:'right'});
+    // ── FOOTER ────────────────────────────────────────────────────
+    const footerTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},layout:TableLayoutType.FIXED,rows:[new TableRow({height:{value:mm(6),rule:HeightRule.ATLEAST},children:[mkCell('TASETI/FRM/HSE/019  Rev:-00',{size:13,color:'1A3A5C',fill:NAVY_BG}),mkCell('Page 1 of 1',{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.CENTER}),mkCell(`FLAGIT HSE Observation Platform | ${displayDate}`,{size:13,color:'1A3A5C',fill:NAVY_BG,align:AlignmentType.RIGHT})]})]});
+
+    const sp=()=>new Paragraph({children:[],spacing:{before:mm(1.5),after:mm(1.5)}});
+    const doc=new Document({sections:[{
+      properties:{page:{size:{width:convertInchesToTwip(16.54),height:convertInchesToTwip(11.69)},margin:{top:mm(12),bottom:mm(12),left:mm(12),right:mm(12)}}},
+      children:[titleTable,sp(),infoTable,sp(),roleTable,sp(),hazardTable,sp(),obsTable,sp(),footerTable],
+    }]});
+
+    const buf=await Packer.toBuffer(doc);
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const d=dateStr.replace(/-/g,'');
+    const loc=(projLocation||currentProject.name||'SITE').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30)||'SITE';
+    a.href=url; a.download=`${d.slice(6)}${d.slice(4,6)}${d.slice(0,4)}-${loc}.docx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    console.error(e);
+    alert('Could not generate Word report: '+e.message);
+  }finally{
+    if(btn){ btn.textContent=origText; btn.disabled=false; }
   }
-  doc.save(`HSE_Observation_Report_${dateStr}.pdf`);
 }
 
 // ── TRACKER / FULL LOG (landscape 13-col) ────────────────────────
