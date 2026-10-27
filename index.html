@@ -9,13 +9,15 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<meta name="theme-color" content="#d85a30" />
+<meta name="theme-color" content="#0D0D0D" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <title>FLAGIT — HSE Observation Platform</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--brand:#d85a30;--brand-dk:#993c1d;--brand-lt:#faece7;--blue:#185fa5;--blue-lt:#e6f1fb;--green:#1a6b2a;--green-lt:#e6f3e8;--red:#8a1a1a;--red-lt:#fdeaea;--amber:#7a5500;--amber-lt:#fff8e1;--purple:#4a1a8a;--purple-lt:#f0e6ff;--border:#e2e4ea;--surface:#fff;--surface2:#f5f6fa;--text:#1a1a2e;--text2:#6b7280;--radius:10px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f6fa;color:#1a1a2e;min-height:100vh}
+:root{--brand:#D85A30;--brand-dk:#B84A24;--brand-lt:rgba(216,90,48,0.15);--blue:#3B82F6;--blue-lt:rgba(59,130,246,0.15);--green:#22C55E;--green-lt:rgba(34,197,94,0.15);--red:#EF4444;--red-lt:rgba(239,68,68,0.15);--amber:#F59E0B;--amber-lt:rgba(245,158,11,0.15);--purple:#A855F7;--purple-lt:rgba(168,85,247,0.15);--border:#2A2A2A;--surface:#1A1A1A;--surface2:#222222;--text:#F0F0F0;--text2:#888888;--radius:10px;color-scheme:dark}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0D0D0D;color:#F0F0F0;min-height:100vh}
 input,select,textarea,button{font-family:inherit}
 input[type=text],input[type=email],input[type=password],select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--brand)}
@@ -70,7 +72,7 @@ button{cursor:pointer}
 @keyframes pulse-green{0%{box-shadow:0 0 0 0 rgba(26,107,42,0.6)}70%{box-shadow:0 0 0 6px rgba(26,107,42,0)}100%{box-shadow:0 0 0 0 rgba(26,107,42,0)}}
 .owner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px}
 .owner-panel{background:var(--surface);border-radius:16px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto}
-.owner-dashboard{display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px}
+.owner-dashboard{display:none;position:fixed;inset:0;background:#0D0D0D;z-index:190;overflow-y:auto;padding:16px}
 </style>
 </head>
 <body>
@@ -1617,7 +1619,7 @@ y += boxH + 6;
 </div>
 
 <!-- OWNER DASHBOARD -->
-<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px"></div>
+<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#0D0D0D;z-index:190;overflow-y:auto;padding:16px"></div>
 <!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
