@@ -1095,7 +1095,7 @@ async function generateDailyReport(dateStr){
     const {
       Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,
       WidthType,AlignmentType,ShadingType,BorderStyle,VerticalAlign,
-      HeightRule,TableLayoutType,convertInchesToTwip,
+      HeightRule,TableLayoutType,convertInchesToTwip,PageOrientation,
     }=docx;
 
     const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
@@ -1166,7 +1166,7 @@ async function generateDailyReport(dateStr){
 
     const sp=()=>new Paragraph({children:[],spacing:{before:mm(1.5),after:mm(1.5)}});
     const doc=new Document({sections:[{
-      properties:{page:{size:{width:convertInchesToTwip(16.54),height:convertInchesToTwip(11.69)},margin:{top:mm(12),bottom:mm(12),left:mm(12),right:mm(12)}}},
+      properties:{page:{size:{width:convertInchesToTwip(16.54),height:convertInchesToTwip(11.69),orientation:PageOrientation.LANDSCAPE},margin:{top:mm(12),bottom:mm(12),left:mm(12),right:mm(12)}}},
       children:[titleTable,sp(),infoTable,sp(),roleTable,sp(),hazardTable,sp(),obsTable,sp(),footerTable],
     }]});
 
