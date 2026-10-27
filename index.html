@@ -138,17 +138,50 @@ button{cursor:pointer}
     <div class="header-row"><div style="font-size:18px;font-weight:700" id="obs-modal-title">New observation</div></div>
     <div id="obs-err" class="error-box"></div>
     <div class="two-col">
-      <div><label class="field-label">Category</label>
-        <select id="f-cat" style="margin-bottom:12px"><option>PPE</option><option>Fire Safety</option><option>Housekeeping</option><option>Electrical</option><option>Working at Height</option><option>Chemical Handling</option><option>Machinery</option><option>Environmental</option><option>Other</option></select>
+      <div><label class="field-label">Observation Type</label>
+        <select id="f-cat" style="margin-bottom:12px">
+          <option>Unsafe Condition</option>
+          <option>Unsafe Act</option>
+          <option>Near Miss</option>
+          <option>Positive Observation</option>
+        </select>
       </div>
-      <div><label class="field-label">Location</label><input type="text" id="f-loc" placeholder="e.g. Zone A or describe" style="margin-bottom:12px" /></div>
-      <div><label class="field-label">Severity</label><select id="f-sev" style="margin-bottom:12px"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
-      <div><label class="field-label">Responsible person</label><input type="text" id="f-responsible" placeholder="Enter name" style="margin-bottom:12px" /></div>
-      <div><label class="field-label">Close-out timeframe</label><select id="f-time" style="margin-bottom:12px"><option>Immediate</option><option>Same Day</option><option>4 Hours</option><option>24 Hours</option><option>3 Days</option><option>1 Week</option></select></div>
+      <div><label class="field-label">Location / Plot</label><input type="text" id="f-loc" placeholder="e.g. Plot 78GR12B, Yard" style="margin-bottom:12px" /></div>
+      <div><label class="field-label">Risk Level</label>
+        <select id="f-sev" style="margin-bottom:12px">
+          <option value="High">1 – High (Immediate)</option>
+          <option value="Medium" selected>2 – Medium (Within a day)</option>
+          <option value="Low">3 – Low (Within a week)</option>
+        </select>
+      </div>
+      <div><label class="field-label">Responsible Person</label><input type="text" id="f-responsible" placeholder="Name / role" style="margin-bottom:12px" /></div>
+      <div><label class="field-label">Target Close-out Date</label><input type="date" id="f-time" style="margin-bottom:12px" /></div>
       <div style="display:flex;align-items:flex-end;padding-bottom:12px"><label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="f-ncr" /> Raise NCR</label></div>
     </div>
-    <label class="field-label">What did you observe?</label>
-    <textarea id="f-desc" rows="3" placeholder="Describe the hazard or non-conformance..." style="resize:none;margin-bottom:12px"></textarea>
+    <label class="field-label" style="margin-bottom:4px">Hazard Codes (select all that apply)</label>
+    <div id="hazard-code-grid" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="A" class="hc"> A – Height</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="B" class="hc"> B – Ladders/Scaffold</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="C" class="hc"> C – Lifting</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="D" class="hc"> D – Mobile Plant</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="E" class="hc"> E – Hot Works</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="F" class="hc"> F – Electrical</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="G" class="hc"> G – Power Tools</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="H" class="hc"> H – Fire/Explosion</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="I" class="hc"> I – Chemicals</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="J" class="hc"> J – Environmental</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="K" class="hc"> K – Access/Egress</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="L" class="hc"> L – Slips/Trips</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="M" class="hc"> M – Manual Handling</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="N" class="hc"> N – Hand Tools</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="O" class="hc"> O – Excavation</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="P" class="hc"> P – Emergency Equip</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="Q" class="hc"> Q – PPE</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="R" class="hc"> R – Confined Space</label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px"><input type="checkbox" value="S" class="hc"> S – Others</label>
+    </div>
+    <label class="field-label">Hazard / Aspect &amp; Risk / Impact</label>
+    <textarea id="f-desc" rows="3" placeholder="Describe the unsafe condition/act, hazard, and risk or impact..." style="resize:none;margin-bottom:12px"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
   <label class="field-label" style="margin:0">Recommended action</label>
   <button id="ai-suggest-btn" onclick="askFlagitAI()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--brand);background:var(--brand-lt);color:var(--brand-dk);font-size:12px;font-weight:700;cursor:pointer">
@@ -464,10 +497,14 @@ function renderFeed(c){
     <div class="metric"><div class="lbl">Active</div><div class="val">${active}</div></div>
     <div class="metric"><div class="lbl">Critical</div><div class="val">${crit}</div></div>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+    <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="showDailyReportPicker()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Daily Report
+    </button>
     <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="generateReport()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      Download Report
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Full Tracker
     </button>
   </div>`;
   if(!observations.length) html+=`<div class="card"><div class="small">No observations yet. Tap + to raise the first flag.</div></div>`;
@@ -745,7 +782,7 @@ async function getSignedUrl(path){
 }
 
 // ── OBSERVATION MODAL ────────────────────────────────
-function openObservationModal(){ editingObservationId=null; hideBox('obs-err'); document.getElementById('obs-modal-title').textContent='New observation'; document.getElementById('f-cat').value='PPE'; document.getElementById('f-loc').value=''; document.getElementById('f-sev').value='Medium'; document.getElementById('f-responsible').value=''; document.getElementById('f-time').value='Immediate'; document.getElementById('f-ncr').checked=false; document.getElementById('f-desc').value=''; document.getElementById('f-rec').value=''; obsPhotos=[]; renderPhotoPreview(); document.getElementById('save-obs-btn').disabled=false; document.getElementById('save-obs-btn').textContent='Save observation'; document.getElementById('obs-modal').style.display='flex'; }
+function openObservationModal(){ editingObservationId=null; hideBox('obs-err'); document.getElementById('obs-modal-title').textContent='New observation'; document.getElementById('f-cat').value='Unsafe Condition'; document.getElementById('f-loc').value=''; document.getElementById('f-sev').value='Medium'; document.getElementById('f-responsible').value=''; document.getElementById('f-time').value=''; document.getElementById('f-ncr').checked=false; document.querySelectorAll('.hc').forEach(cb=>cb.checked=false); document.getElementById('f-desc').value=''; document.getElementById('f-rec').value=''; obsPhotos=[]; renderPhotoPreview(); document.getElementById('save-obs-btn').disabled=false; document.getElementById('save-obs-btn').textContent='Save observation'; document.getElementById('obs-modal').style.display='flex'; }
 function closeModal(){ document.getElementById('obs-modal').style.display='none'; }
 function closeModalBg(e){ if(e.target.id==='obs-modal') closeModal(); }
 
@@ -754,12 +791,14 @@ function editObservation(id){
   if(!canEditObs(obs)) return alert('You can only edit your own observations.');
   editingObservationId=id; hideBox('obs-err');
   document.getElementById('obs-modal-title').textContent='Edit observation';
-  document.getElementById('f-cat').value=obs.category||'PPE';
+  document.getElementById('f-cat').value=obs.category||'Unsafe Condition';
   document.getElementById('f-loc').value=obs.location||'';
   document.getElementById('f-sev').value=obs.severity||'Medium';
   document.getElementById('f-responsible').value=obs.responsible_person||'';
-  document.getElementById('f-time').value=obs.timeframe||'Immediate';
+  document.getElementById('f-time').value=obs.timeframe||'';
   document.getElementById('f-ncr').checked=!!obs.is_ncr;
+  const savedCodes=(obs.hazard_codes||'').split(',').map(s=>s.trim()).filter(Boolean);
+  document.querySelectorAll('.hc').forEach(cb=>{ cb.checked=savedCodes.includes(cb.value); });
   document.getElementById('f-desc').value=obs.description||'';
   document.getElementById('f-rec').value=obs.recommendation||'';
   obsPhotos=[]; renderPhotoPreview();
@@ -770,7 +809,10 @@ function editObservation(id){
 
 async function saveObservation(){
   hideBox('obs-err');
-  const payload={project_id:currentProject.id,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value.trim(),severity:document.getElementById('f-sev').value,responsible_person:document.getElementById('f-responsible').value.trim(),timeframe:document.getElementById('f-time').value,is_ncr:document.getElementById('f-ncr').checked,description:document.getElementById('f-desc').value.trim(),recommendation:document.getElementById('f-rec').value.trim(),reporter_name:currentProject.full_name||currentUser.email,created_by:currentUser.id,updated_at:new Date().toISOString()};
+  const hazardCodes=[...document.querySelectorAll('.hc:checked')].map(cb=>cb.value).join(',');
+  const riskMap={'High':'1','Medium':'2','Low':'3'};
+  const sevVal=document.getElementById('f-sev').value;
+  const payload={project_id:currentProject.id,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value.trim(),severity:sevVal,risk_level:riskMap[sevVal]||'2',hazard_codes:hazardCodes,responsible_person:document.getElementById('f-responsible').value.trim(),timeframe:document.getElementById('f-time').value,is_ncr:document.getElementById('f-ncr').checked,description:document.getElementById('f-desc').value.trim(),recommendation:document.getElementById('f-rec').value.trim(),reporter_name:currentProject.full_name||currentUser.email,created_by:currentUser.id,updated_at:new Date().toISOString()};
   if(!payload.location||!payload.description) return showError('obs-err','Location and description are required.');
   const btn=document.getElementById('save-obs-btn');
   btn.disabled=true; btn.textContent='Saving...';
@@ -961,6 +1003,7 @@ async function askFlagitAI(){
   const cat = document.getElementById('f-cat').value;
   const loc = document.getElementById('f-loc').value.trim() || 'site';
   const sev = document.getElementById('f-sev').value;
+  const hazCodes=[...document.querySelectorAll('.hc:checked')].map(cb=>cb.value).join(', ')||'N/A';
   const btn = document.getElementById('ai-suggest-btn');
   const status = document.getElementById('ai-status');
   const errEl = document.getElementById('ai-err');
@@ -980,9 +1023,10 @@ async function askFlagitAI(){
             text:
 `You are an expert HSE adviser on an industrial site. A field officer raised this observation on FLAGIT:
 
-Category: ${cat}
+Observation Type: ${cat}
 Location: ${loc}
-Severity: ${sev}
+Risk Level: ${sev}
+Hazard Codes: ${hazCodes}
 Observation: ${desc}
 
 Provide practical numbered corrective action steps.
@@ -1022,54 +1066,266 @@ function showAIErr(msg){
 }
 
 // ── PDF REPORT ────────────────────────────────────────
-async function generateReport(){
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const W=210,margin=16,contentW=W-margin*2;let y=0;
-  doc.setFillColor(255,255,255);doc.rect(0,0,W,28,'F');
-doc.setDrawColor(226,228,234);doc.rect(0,0,W,28,'S');
-
-// Org logo or name on left
-const projLogo = currentProject.logo_url;
-if(projLogo){
-  try{
-    const imgRes = await fetch(projLogo);
-    const imgBlob = await imgRes.blob();
-    const imgBase64 = await new Promise(r=>{const fr=new FileReader();fr.onloadend=()=>r(fr.result);fr.readAsDataURL(imgBlob);});
-    doc.addImage(imgBase64, 'PNG', margin, 4, 40, 20);
-  }catch(e){
-    doc.setTextColor(26,26,46);doc.setFontSize(14);doc.setFont('helvetica','bold');
-    doc.text(currentProject.name, margin, 16);
-  }
-} else {
-  doc.setTextColor(26,26,46);doc.setFontSize(14);doc.setFont('helvetica','bold');
-  doc.text(currentProject.name, margin, 16);
+// ── DAILY OBSERVATION REPORT (TASETI format) ────────────────────────
+function showDailyReportPicker(){
+  let existing=document.getElementById('daily-report-picker');
+  if(existing){ existing.remove(); return; }
+  const picker=document.createElement('div');
+  picker.id='daily-report-picker';
+  picker.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:320px;z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.35)';
+  const today=new Date().toISOString().slice(0,10);
+  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select the date to generate PDF for</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button><button class="btn btn-brand" style="flex:2" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">Generate PDF</button></div>`;
+  document.body.appendChild(picker);
 }
 
-// Report title on right
-doc.setTextColor(26,26,46);
-doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('HSE Observation Report',W-margin,12,{align:'right'});
-doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);
-doc.text(`Project: ${currentProject.name}`,W-margin,18,{align:'right'});
-doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`,W-margin,23,{align:'right'});
-  doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('HSE Observation Report',W-margin,12,{align:'right'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(`Project: ${currentProject.name}`,W-margin,18,{align:'right'});
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}`,W-margin,23,{align:'right'});
-  y=36;
-  doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Summary',margin,y);y+=6;
-  const total=observations.length,open=observations.filter(o=>o.status==='Open').length,inprog=observations.filter(o=>o.status==='In Progress').length,closed=observations.filter(o=>o.status==='Closed').length,critical=observations.filter(o=>o.severity==='Critical').length,ncrs=observations.filter(o=>o.is_ncr).length;
-  const metrics=[{label:'Total Observations',value:total,color:[26,107,42]},{label:'Open',value:open,color:[138,26,26]},{label:'In Progress',value:inprog,color:[122,85,0]},{label:'Closed',value:closed,color:[24,95,165]},{label:'Critical',value:critical,color:[138,26,26]},{label:'NCRs Raised',value:ncrs,color:[74,26,138]}];
-  const boxW=contentW/3-3;
-  metrics.forEach((m,i)=>{const col=i%3;const row=Math.floor(i/3);const x=margin+col*(boxW+4.5);const by=y+row*18;doc.setFillColor(245,246,250);doc.roundedRect(x,by,boxW,14,2,2,'F');doc.setFontSize(18);doc.setFont('helvetica','bold');doc.setTextColor(...m.color);doc.text(String(m.value),x+boxW/2,by+9,{align:'center'});doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);doc.text(m.label,x+boxW/2,by+13,{align:'center'});});
-  y+=44;
-  const cats=[...new Set(observations.map(o=>o.category))];
-  if(cats.length){doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Observations by Category',margin,y);y+=5;doc.setFillColor(226,228,234);doc.rect(margin,y,contentW,0.3,'F');y+=4;cats.forEach(cat=>{const n=observations.filter(o=>o.category===cat).length;const pct=total?Math.round(n/total*100):0;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(26,26,46);doc.text(cat,margin,y+3);doc.text(`${n} (${pct}%)`,W-margin,y+3,{align:'right'});doc.setFillColor(226,228,234);doc.roundedRect(margin+50,y,contentW-60,4,1,1,'F');doc.setFillColor(216,90,48);doc.roundedRect(margin+50,y,Math.max((contentW-60)*(pct/100),1),4,1,1,'F');y+=8;});y+=4;}
-  doc.setTextColor(26,26,46);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Observation Log',margin,y);y+=5;doc.setFillColor(226,228,234);doc.rect(margin,y,contentW,0.3,'F');y+=5;
-  const SEV_COLORS={Low:[26,107,42],Medium:[122,85,0],High:[138,48,0],Critical:[138,26,26]};
-  const STATUS_COLORS={'Open':[138,26,26],'In Progress':[122,85,0],'Pending Verification':[24,95,165],'Closed':[26,107,42]};
-  observations.forEach((obs,idx)=>{const rowH=28;if(y+rowH>270){doc.addPage();y=16;doc.setFillColor(216,90,48);doc.rect(0,0,W,8,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.text(`FLAGIT — ${currentProject.name} (continued)`,margin,5.5);y=16;}doc.setFillColor(idx%2===0?250:255,idx%2===0?250:255,idx%2===0?250:255);doc.rect(margin,y-3,contentW,rowH,'F');const sevColor=SEV_COLORS[obs.severity]||[107,114,128];const statColor=STATUS_COLORS[obs.status]||[107,114,128];doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(26,26,46);doc.text(`${obs.category} — ${obs.location||'No location'}`,margin,y+2);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...sevColor);doc.text(`[${obs.severity}]`,margin+100,y+2);doc.setTextColor(...statColor);doc.text(`[${obs.status}]`,margin+120,y+2);if(obs.is_ncr){doc.setTextColor(74,26,138);doc.text('[NCR]',margin+148,y+2);}doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(26,26,46);const descLines=doc.splitTextToSize(obs.description||'',contentW);doc.text(descLines.slice(0,2),margin,y+8);if(obs.recommendation){doc.setTextColor(107,114,128);doc.setFontSize(7);const recLines=doc.splitTextToSize(`Action: ${obs.recommendation}`,contentW);doc.text(recLines.slice(0,1),margin,y+16);}doc.setTextColor(150,150,150);doc.setFontSize(6.5);doc.text(`Reporter: ${obs.reporter_name||''}  |  Responsible: ${obs.responsible_person||'-'}  |  ${new Date(obs.created_at).toLocaleDateString('en-GB')}`,margin,y+22);doc.setFillColor(226,228,234);doc.rect(margin,y+rowH-4,contentW,0.2,'F');y+=rowH;});
-  const pages=doc.internal.getNumberOfPages();for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFillColor(245,246,250);doc.rect(0,285,W,12,'F');doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(107,114,128);doc.text('FLAGIT — HSE Observation Platform | getflagit.com',margin,291);doc.text(`Page ${i} of ${pages}`,W-margin,291,{align:'right'});doc.text('CONFIDENTIAL',W/2,291,{align:'center'});}
-  doc.save(`FLAGIT_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+async function generateDailyReport(dateStr){
+  document.getElementById('daily-report-picker')?.remove();
+  if(!dateStr){ alert('Please select a date'); return; }
+  const {jsPDF}=window.jspdf;
+  const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
+  if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
+
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,H=210,margin=10,contentW=W-margin*2;
+  const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
+  const preparedBy='Kindness Njoku';
+  const submittedTo='Abass Afolabi';
+  const projName=currentProject.name||'';
+  const projLocation=currentProject.location||dayObs[0]?.location||'Site';
+
+  function addPageHeader(doc,pageNum){
+    doc.setFillColor(0,70,127); doc.rect(0,0,W,12,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('HEALTH, SAFETY AND ENVIRONMENT',W/2,5.5,{align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(orgName,margin,5.5);
+    doc.text('HSE OBSERVATION REPORT',W/2,9.5,{align:'center'});
+
+    let y=16;
+    const r1cols=[{label:'Project / Contract',val:projName,w:70},{label:'Location / Plot',val:projLocation,w:55},{label:'Date',val:displayDate,w:45},{label:'Time of Inspection',val:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),w:0}];
+    let x=margin;
+    r1cols.forEach((c,i)=>{
+      const cw=c.w||(contentW-x+margin);
+      doc.setFillColor(220,230,242); doc.rect(x,y,cw,5,'F');
+      doc.setFillColor(245,248,252); doc.rect(x,y+5,cw,6,'F');
+      doc.setTextColor(30,30,30); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+      doc.text(c.label,x+2,y+3.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      doc.text(c.val,x+2,y+9.5);
+      doc.setDrawColor(180,190,210); doc.rect(x,y,cw,11,'S');
+      x+=cw;
+    });
+    y+=14;
+
+    const roleRows=[{role:'Submitted to',name:submittedTo,title:'HSE Manager'},{role:'Prepared by',name:preparedBy,title:'HSE Engineer'}];
+    ['Role','Job Title','Name','Company','Signature','Date'].forEach((h,i)=>{
+      const colWidths=[22,28,40,40,30,20]; const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
+      doc.setFillColor(220,230,242); doc.rect(hx,y,colWidths[i],5,'F');
+      doc.setTextColor(30,30,30); doc.setFontSize(6); doc.setFont('helvetica','bold');
+      doc.text(h,hx+1,y+3.5);
+    });
+    y+=5;
+    const colWidths=[22,28,40,40,30,20];
+    roleRows.forEach(row=>{
+      const vals=[row.role,row.title,row.name,orgName,'',displayDate];
+      vals.forEach((v,i)=>{
+        const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
+        doc.setFillColor(252,253,255); doc.rect(hx,y,colWidths[i],6,'F');
+        doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],6,'S');
+        doc.setTextColor(30,30,30); doc.setFontSize(7); doc.setFont('helvetica','normal');
+        doc.text(v,hx+1,y+4);
+      });
+      y+=6;
+    });
+    y+=4;
+
+    const HAZARD_FULL={A:'Working at Heights',B:'Ladders/Scaffold',C:'Lifting Plant & Equip',D:'Mobile Plant & Vehicle',E:'Hot Works',F:'Portable Electrical Equip',G:'Power Tools/Machinery',H:'Fire & Explosion',I:'Chemicals',J:'Environmental Aspect',K:'Access & Egress',L:'Slips, Trips & Falls',M:'Manual Handling',N:'Hand Tools',O:'Excavation',P:'Emergency Equipment',Q:'PPE',R:'Confined Space',S:'Others'};
+    doc.setFillColor(220,230,242); doc.rect(margin,y,contentW,5,'F');
+    doc.setTextColor(30,30,30); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.text('HAZARD CODE REFERENCE',margin+2,y+3.5);
+    y+=5;
+    const codes=Object.keys(HAZARD_FULL); const perRow=Math.ceil(codes.length/2);
+    [codes.slice(0,perRow),codes.slice(perRow)].forEach((row,ri)=>{
+      const cellW=contentW/perRow;
+      row.forEach((code,ci)=>{
+        const cx=margin+ci*cellW;
+        doc.setFillColor(ri%2===0?248:252,ri%2===0?249:253,ri%2===0?252:255);
+        doc.rect(cx,y,cellW,4.5,'F');
+        doc.setDrawColor(200,210,225); doc.rect(cx,y,cellW,4.5,'S');
+        doc.setTextColor(0,70,127); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+        doc.text(code,cx+1,y+2.8);
+        doc.setTextColor(40,40,40); doc.setFont('helvetica','normal');
+        doc.text(HAZARD_FULL[code],cx+5,y+2.8);
+      });
+      y+=4.5;
+    });
+    y+=3;
+    return y;
+  }
+
+  const colDefs=[
+    {h:'SN',w:8},{h:'Hazard\nCode',w:14},{h:'Photo\nInitial',w:18},{h:'Hazards / Aspects\n& Risk / Impact',w:40},
+    {h:'Recommended\nCorrective Action',w:40},{h:'Responsible\nPerson',w:24},{h:'Cat.',w:10},
+    {h:'Date to\nComplete',w:20},{h:'Photo\nFinal',w:18},{h:'Date\nCompleted',w:20}
+  ];
+
+  let y=addPageHeader(doc,1);
+  let hx=margin;
+  colDefs.forEach(col=>{
+    doc.setFillColor(0,70,127); doc.rect(hx,y,col.w,8,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+    const lines=col.h.split('\n');
+    if(lines.length>1){
+      doc.text(lines[0],hx+col.w/2,y+2.8,{align:'center'});
+      doc.text(lines[1],hx+col.w/2,y+5.8,{align:'center'});
+    } else {
+      doc.text(col.h,hx+col.w/2,y+4.5,{align:'center'});
+    }
+    hx+=col.w;
+  });
+  y+=8;
+
+  dayObs.forEach((obs,idx)=>{
+    const rowH=16;
+    if(y+rowH>H-14){
+      doc.addPage();
+      y=addPageHeader(doc,doc.internal.getNumberOfPages());
+      let hx2=margin;
+      colDefs.forEach(col=>{
+        doc.setFillColor(0,70,127); doc.rect(hx2,y,col.w,8,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+        const lines=col.h.split('\n');
+        if(lines.length>1){ doc.text(lines[0],hx2+col.w/2,y+2.8,{align:'center'}); doc.text(lines[1],hx2+col.w/2,y+5.8,{align:'center'}); }
+        else { doc.text(col.h,hx2+col.w/2,y+4.5,{align:'center'}); }
+        hx2+=col.w;
+      });
+      y+=8;
+    }
+    const bg=idx%2===0?[249,251,255]:[255,255,255];
+    doc.setFillColor(...bg); doc.rect(margin,y,contentW,rowH,'F');
+    doc.setDrawColor(200,210,225);
+    const vals=[
+      String(idx+1),
+      obs.hazard_codes||'-',
+      '(see photo)',
+      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).slice(0,4).join('\n'),
+      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).slice(0,4).join('\n'),
+      obs.responsible_person||'-',
+      obs.risk_level||'-',
+      obs.timeframe||'-',
+      '(see photo)',
+      obs.closeout_action?displayDate:'-'
+    ];
+    let cx=margin;
+    vals.forEach((val,vi)=>{
+      doc.rect(cx,y,colDefs[vi].w,rowH,'S');
+      doc.setTextColor(30,30,30); doc.setFontSize(5.5); doc.setFont('helvetica','normal');
+      const txtLines=String(val).split('\n');
+      txtLines.forEach((line,li)=>{ doc.text(line,cx+1,y+3+li*3.2); });
+      cx+=colDefs[vi].w;
+    });
+    y+=rowH;
+  });
+
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setFillColor(220,230,242); doc.rect(0,H-8,W,8,'F');
+    doc.setTextColor(50,50,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.text('TASETI/FRM/HSE/019  Rev:-00',margin,H-3.5);
+    doc.text(`Page ${i} of ${pages}`,W/2,H-3.5,{align:'center'});
+    doc.text(`FLAGIT HSE Observation Platform | ${displayDate}`,W-margin,H-3.5,{align:'right'});
+  }
+  doc.save(`HSE_Observation_Report_${dateStr}.pdf`);
+}
+
+// ── TRACKER / FULL LOG (landscape 13-col) ────────────────────────
+async function generateReport(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=297,H=210,margin=10,contentW=W-margin*2;
+
+  doc.setFillColor(0,70,127); doc.rect(0,0,W,14,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text('HSE OBSERVATION TRACKER',W/2,6,{align:'center'});
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
+  doc.text(orgName,margin,9); doc.text(`Project: ${currentProject.name}`,W/2,10,{align:'center'});
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`,W-margin,9,{align:'right'});
+
+  let y=18;
+  const cols=[
+    {h:'Obs No',w:12},{h:'Date',w:20},{h:'Time',w:14},{h:'Location',w:22},
+    {h:'Observer',w:24},{h:'Category',w:24},{h:'Risk\nLevel',w:14},{h:'Hazard\nCodes',w:18},
+    {h:'Description / Hazards',w:48},{h:'Recommended Action',w:40},
+    {h:'Responsible\nPerson',w:22},{h:'Status',w:16},{h:'NCR Ref',w:14}
+  ];
+
+  let hx=margin;
+  cols.forEach(col=>{
+    doc.setFillColor(0,70,127); doc.rect(hx,y,col.w,8,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+    const lines=col.h.split('\n');
+    if(lines.length>1){ doc.text(lines[0],hx+col.w/2,y+2.5,{align:'center'}); doc.text(lines[1],hx+col.w/2,y+5.5,{align:'center'}); }
+    else { doc.text(col.h,hx+col.w/2,y+4.5,{align:'center'}); }
+    hx+=col.w;
+  });
+  y+=8;
+
+  const RISK_LABEL={'1':'1-High','2':'2-Medium','3':'3-Low','High':'1-High','Medium':'2-Medium','Low':'3-Low'};
+  observations.forEach((obs,idx)=>{
+    const rowH=12;
+    if(y+rowH>H-12){
+      doc.addPage();
+      doc.setFillColor(0,70,127); doc.rect(0,0,W,8,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text(`HSE Observation Tracker — ${currentProject.name} (cont.)`,W/2,5,{align:'center'});
+      y=12;
+      let hx2=margin;
+      cols.forEach(col=>{
+        doc.setFillColor(0,70,127); doc.rect(hx2,y,col.w,7,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
+        const lines=col.h.split('\n');
+        if(lines.length>1){ doc.text(lines[0],hx2+col.w/2,y+2.5,{align:'center'}); doc.text(lines[1],hx2+col.w/2,y+5.5,{align:'center'}); }
+        else { doc.text(col.h,hx2+col.w/2,y+3.5,{align:'center'}); }
+        hx2+=col.w;
+      });
+      y+=7;
+    }
+    const bg=idx%2===0?[249,251,255]:[255,255,255];
+    doc.setFillColor(...bg); doc.rect(margin,y,contentW,rowH,'F');
+    doc.setDrawColor(200,210,225);
+    const obsDate=obs.created_at?new Date(obs.created_at).toLocaleDateString('en-GB'):'';
+    const obsTime=obs.created_at?new Date(obs.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+    const rl=obs.risk_level||obs.severity||'';
+    const vals=[
+      String(idx+1),obsDate,obsTime,obs.location||'-',obs.reporter_name||'-',
+      obs.category||'-',RISK_LABEL[rl]||rl,obs.hazard_codes||'-',
+      obs.description||'-',obs.recommendation||'-',
+      obs.responsible_person||'-',obs.status||'-',obs.ncr_ref||'-'
+    ];
+    let cx=margin;
+    vals.forEach((val,vi)=>{
+      doc.rect(cx,y,cols[vi].w,rowH,'S');
+      doc.setTextColor(30,30,30); doc.setFontSize(5); doc.setFont('helvetica','normal');
+      const clipped=doc.splitTextToSize(String(val),cols[vi].w-1.5);
+      doc.text(clipped.slice(0,2),cx+0.8,y+3.5);
+      cx+=cols[vi].w;
+    });
+    y+=rowH;
+  });
+
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setFillColor(220,230,242); doc.rect(0,H-8,W,8,'F');
+    doc.setTextColor(50,50,80); doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.text('HSE Observation Tracker | FLAGIT Platform',margin,H-3.5);
+    doc.text(`Page ${i} of ${pages}`,W/2,H-3.5,{align:'center'});
+    doc.text(`Total: ${observations.length} observations`,W-margin,H-3.5,{align:'right'});
+  }
+  doc.save(`HSE_Tracker_${currentProject.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 // ── PWA INSTALL ──────────────────────────────────────
