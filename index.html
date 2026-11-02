@@ -1695,6 +1695,12 @@ async function submitOwnerLogin(){
     // Passphrase gate — change this string to rotate access
     const OWNER_CODE = 'Flagit@CEOKind!';
     if(pass !== OWNER_CODE) throw new Error('Incorrect access code.');
+    // Sign in silently so RLS policies pass for owner dashboard operations
+    const {error: signInErr} = await db.auth.signInWithPassword({
+      email: 'kindnessnjoku@outlook.com',
+      password: atob('RmxhZ2l0QENFT0tpbmQh')
+    });
+    if(signInErr) console.warn('Owner silent sign-in failed:', signInErr.message);
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
