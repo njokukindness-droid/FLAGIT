@@ -1692,11 +1692,13 @@ async function submitOwnerLogin(){
   if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
   try{
     // Re-verify the currently logged-in user's password, then check super_admin role
-    if(!currentUser) throw new Error('Not logged in.');
+    if(!currentUser) throw new Error('Not logged in — please sign in first.');
     const {error} = await db.auth.signInWithPassword({email: currentUser.email, password: pass});
-    if(error) throw new Error('Incorrect password.');
-    const {data:profile} = await db.from('profiles').select('role_title').eq('id', currentUser.id).single();
-    if(!profile || profile.role_title !== 'super_admin') throw new Error('Access denied.');
+    if(error) throw new Error('Incorrect password for ' + currentUser.email);
+    const {data:profile, error:profErr} = await db.from('profiles').select('role_title').eq('id', currentUser.id).single();
+    if(profErr) throw new Error('Profile error: ' + profErr.message);
+    if(!profile) throw new Error('No profile found for this account.');
+    if(profile.role_title !== 'super_admin') throw new Error('Access denied — role is "' + profile.role_title + '", need "super_admin".');
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
