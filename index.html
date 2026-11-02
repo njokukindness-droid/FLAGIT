@@ -1685,20 +1685,24 @@ function closeOwnerLogin(){
 }
 
 async function submitOwnerLogin(){
+  const email = document.getElementById('owner-email-inp').value.trim().toLowerCase();
   const pass = document.getElementById('owner-pass-inp').value;
   const err = document.getElementById('owner-login-err');
   err.style.display = 'none';
   const btn = document.getElementById('owner-login-btn');
   if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
   try{
-    // Re-verify the currently logged-in user's password, then check super_admin role
-    if(!currentUser) throw new Error('Not logged in — please sign in first.');
-    const {error} = await db.auth.signInWithPassword({email: currentUser.email, password: pass});
-    if(error) throw new Error('Incorrect password for ' + currentUser.email);
-    const {data:profile, error:profErr} = await db.from('profiles').select('role_title').eq('id', currentUser.id).single();
+    if(!email) throw new Error('Please enter your email.');
+    if(!pass) throw new Error('Please enter your password.');
+    // Sign in and check super_admin role — this sets the session
+    const {data, error} = await db.auth.signInWithPassword({email, password: pass});
+    if(error) throw new Error('Incorrect email or password.');
+    const {data:profile, error:profErr} = await db.from('profiles').select('role_title').eq('id', data.user.id).single();
     if(profErr) throw new Error('Profile error: ' + profErr.message);
     if(!profile) throw new Error('No profile found for this account.');
-    if(profile.role_title !== 'super_admin') throw new Error('Access denied — role is "' + profile.role_title + '", need "super_admin".');
+    if(profile.role_title !== 'super_admin') throw new Error('Access denied.');
+    // Update currentUser so the rest of the app works correctly
+    currentUser = data.user;
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
