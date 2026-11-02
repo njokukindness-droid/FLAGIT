@@ -1698,7 +1698,7 @@ async function submitOwnerLogin(){
     // Sign in silently so RLS policies pass for owner dashboard operations
     const {error: signInErr} = await db.auth.signInWithPassword({
       email: 'kindnessnjoku@outlook.com',
-      password: atob('RmxhZ2l0QENFT0tpbmQh')
+      password: atob('MTEwNjI0SmFzQG1pbmU=')
     });
     if(signInErr) console.warn('Owner silent sign-in failed:', signInErr.message);
     ownerAuthenticated = true;
