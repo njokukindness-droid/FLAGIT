@@ -1682,18 +1682,29 @@ function closeOwnerLogin(){
   document.getElementById('owner-login-err').style.display = 'none';
 }
 
-function submitOwnerLogin(){
+async function submitOwnerLogin(){
   const email = document.getElementById('owner-email-inp').value.trim().toLowerCase();
   const pass = document.getElementById('owner-pass-inp').value;
   const err = document.getElementById('owner-login-err');
-  if(email !== 'kindnessnjoku@outlook.com' || pass !== 'Flagit@CEOKind!'){
-    err.textContent = 'Invalid credentials.';
+  err.style.display = 'none';
+  const btn = document.getElementById('owner-login-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
+  try{
+    // Authenticate via Supabase — no credentials stored in code
+    const {data, error} = await db.auth.signInWithPassword({email, password:pass});
+    if(error) throw new Error('Invalid credentials.');
+    // Check the profile has super_admin role
+    const {data:profile} = await db.from('profiles').select('role').eq('id', data.user.id).single();
+    if(!profile || profile.role !== 'super_admin') throw new Error('Invalid credentials.');
+    ownerAuthenticated = true;
+    closeOwnerLogin();
+    openOwnerDashboard();
+  }catch(e){
+    err.textContent = e.message || 'Invalid credentials.';
     err.style.display = 'block';
-    return;
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Enter'; }
   }
-  ownerAuthenticated = true;
-  closeOwnerLogin();
-  openOwnerDashboard();
 }
 
 async function openOwnerDashboard(){
@@ -2122,7 +2133,7 @@ y += boxH + 6;
     <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
     <div style="display:flex;gap:8px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
-      <button class="btn btn-brand" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
+      <button class="btn btn-brand" id="owner-login-btn" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
     </div>
   </div>
 </div>
