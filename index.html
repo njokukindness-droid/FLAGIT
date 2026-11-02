@@ -146,6 +146,7 @@ button{cursor:pointer}
     <button id="nav-dashboard" onclick="setView('dashboard')">Dashboard</button>
     <button id="nav-notifications" onclick="setView('notifications')">Alerts</button>
     <button id="nav-members" onclick="setView('members')">Team</button>
+    <button id="nav-profile" onclick="setView('profile')">Profile</button>
   </div>
 </div>
 
@@ -499,7 +500,7 @@ async function loadNotifications(){
 
 function setView(v){
   currentView=v;
-  ['feed','dashboard','notifications','members'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
+  ['feed','dashboard','notifications','members','profile'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
   selectedObservation=null;
   document.getElementById('fab-btn').style.display=v==='feed'?'flex':'none';
   renderContent();
@@ -511,6 +512,7 @@ function renderContent(){
   if(currentView==='dashboard') return renderDashboard(c);
   if(currentView==='notifications') return renderNotifications(c);
   if(currentView==='members') return renderMembers(c);
+  if(currentView==='profile') return renderProfile(c);
   renderFeed(c);
 }
 
@@ -1577,6 +1579,60 @@ async function switchProject(projectId){
   renderTopBar();
   await refreshAll();
   attachRealtime();
+}
+
+// ── PROFILE / CHANGE PASSWORD ─────────────────────────
+function renderProfile(c){
+  const u=currentUser;
+  const name=u?.user_metadata?.full_name||u?.email||'';
+  const email=u?.email||'';
+  c.innerHTML=`
+    <div style="max-width:480px;margin:0 auto;padding-top:8px">
+      <div style="font-size:18px;font-weight:700;margin-bottom:16px">My Profile</div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:4px">
+          <div class="avatar" style="width:48px;height:48px;font-size:18px">${esc(name.charAt(0).toUpperCase())}</div>
+          <div>
+            <div style="font-weight:700;font-size:15px">${esc(name)}</div>
+            <div style="font-size:13px;color:var(--text2)">${esc(email)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px">Change password</div>
+        <div id="chpw-err" class="error-box"></div>
+        <div id="chpw-ok" class="success-box"></div>
+        <label class="field-label">New password</label>
+        <input type="password" id="chpw-pass1" placeholder="Min 8 characters" style="margin-bottom:12px" />
+        <label class="field-label">Confirm new password</label>
+        <input type="password" id="chpw-pass2" placeholder="Repeat password" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')changePassword()" />
+        <button class="btn btn-brand" style="width:100%" id="chpw-btn" onclick="changePassword()">Update password</button>
+      </div>
+
+      <div style="text-align:center;margin-top:8px">
+        <button class="btn btn-ghost" style="width:100%" onclick="signOut()">Sign out</button>
+      </div>
+    </div>`;
+}
+
+async function changePassword(){
+  hideBox('chpw-err'); hideBox('chpw-ok');
+  const p1=document.getElementById('chpw-pass1').value;
+  const p2=document.getElementById('chpw-pass2').value;
+  if(!p1) return showError('chpw-err','Please enter a new password.');
+  if(p1.length<8) return showError('chpw-err','Password must be at least 8 characters.');
+  if(p1!==p2) return showError('chpw-err','Passwords do not match.');
+  setAuthBusy(true,'chpw-btn','Update password','Updating...');
+  try{
+    const {error}=await db.auth.updateUser({password:p1});
+    if(error) throw error;
+    showSuccess('chpw-ok','Password updated successfully!');
+    document.getElementById('chpw-pass1').value='';
+    document.getElementById('chpw-pass2').value='';
+  }catch(err){ showError('chpw-err',err.message||'Could not update password.'); }
+  finally{ setAuthBusy(false,'chpw-btn','Update password','Updating...'); }
 }
 
 async function signOut(){
