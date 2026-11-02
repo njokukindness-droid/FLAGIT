@@ -35,6 +35,7 @@ button{cursor:pointer}
 .error-box{font-size:13px;color:var(--red);background:var(--red-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
 .success-box{font-size:13px;color:var(--green);background:var(--green-lt);border-radius:7px;padding:8px 12px;margin-bottom:12px;display:none}
 .wordmark{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--brand)}.wordmark span{color:#ffffff}
+.pw-wrap{position:relative;margin-bottom:12px}.pw-wrap input{margin-bottom:0!important;padding-right:40px}.pw-wrap .pw-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);padding:4px;line-height:1}
 .logo-icon{width:56px;height:56px;border-radius:16px;background:var(--brand);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
 .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}.otp-input{width:46px;height:54px;border:1px solid var(--border);border-radius:8px;text-align:center;font-size:24px;outline:none}
 .otp-input:focus{border-color:var(--brand)}
@@ -116,9 +117,9 @@ button{cursor:pointer}
         <div id="newpass-err" class="error-box"></div>
         <div id="newpass-ok" class="success-box"></div>
         <label class="field-label">New password</label>
-        <input type="password" id="np-pass1" placeholder="Min 8 characters" style="margin-bottom:12px" />
+        <div class="pw-wrap"><input type="password" id="np-pass1" placeholder="Min 8 characters" /><button type="button" class="pw-eye" onclick="togglePw('np-pass1',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <label class="field-label">Confirm password</label>
-        <input type="password" id="np-pass2" placeholder="Repeat password" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')setNewPassword()" />
+        <div class="pw-wrap" style="margin-bottom:16px"><input type="password" id="np-pass2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')setNewPassword()" /><button type="button" class="pw-eye" onclick="togglePw('np-pass2',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="newpass-btn" onclick="setNewPassword()">Update password</button>
       </div>
     </div>
@@ -322,6 +323,7 @@ function formatDate(ts){ if(!ts)return''; return new Date(ts).toLocaleString(); 
 function slugify(name){ return String(name||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80); }
 function esc(str=''){ return str.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function setAuthBusy(busy,btnId,label,busyLabel){ const btn=document.getElementById(btnId); if(!btn)return; btn.disabled=busy; btn.textContent=busy?busyLabel:label; }
+function togglePw(id,btn){ const inp=document.getElementById(id); const show=inp.type==='password'; inp.type=show?'text':'password'; btn.innerHTML=show?'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'; }
 
 // ── FORM TOGGLE ─────────────────────────────────────
 
@@ -1605,9 +1607,9 @@ function renderProfile(c){
         <div id="chpw-err" class="error-box"></div>
         <div id="chpw-ok" class="success-box"></div>
         <label class="field-label">New password</label>
-        <input type="password" id="chpw-pass1" placeholder="Min 8 characters" style="margin-bottom:12px" />
+        <div class="pw-wrap"><input type="password" id="chpw-pass1" placeholder="Min 8 characters" /><button type="button" class="pw-eye" onclick="togglePw('chpw-pass1',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <label class="field-label">Confirm new password</label>
-        <input type="password" id="chpw-pass2" placeholder="Repeat password" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')changePassword()" />
+        <div class="pw-wrap" style="margin-bottom:16px"><input type="password" id="chpw-pass2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')changePassword()" /><button type="button" class="pw-eye" onclick="togglePw('chpw-pass2',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <button class="btn btn-brand" style="width:100%" id="chpw-btn" onclick="changePassword()">Update password</button>
       </div>
 
@@ -2130,7 +2132,7 @@ y += boxH + 6;
     <label class="field-label">Email</label>
     <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
     <label class="field-label">Password</label>
-    <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
+    <div class="pw-wrap" style="margin-bottom:16px"><input type="password" id="owner-pass-inp" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitOwnerLogin()" /><button type="button" class="pw-eye" onclick="togglePw('owner-pass-inp',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
       <button class="btn btn-brand" id="owner-login-btn" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
@@ -2156,7 +2158,7 @@ y += boxH + 6;
           <label class="field-label">Email address</label>
           <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:12px" onkeydown="if(event.key==='Enter')document.getElementById('si-pass').focus()" />
           <label class="field-label">Password</label>
-          <input type="password" id="si-pass" placeholder="••••••••" style="margin-bottom:6px" onkeydown="if(event.key==='Enter')startSignIn()" />
+          <div class="pw-wrap" style="margin-bottom:6px"><input type="password" id="si-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')startSignIn()" /><button type="button" class="pw-eye" onclick="togglePw('si-pass',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
           <div style="text-align:right;margin-bottom:14px"><span onclick="showReset()" style="font-size:12px;color:var(--brand);cursor:pointer">Forgot password?</span></div>
           <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in</button>
 
