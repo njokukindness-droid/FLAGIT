@@ -1685,29 +1685,21 @@ function closeOwnerLogin(){
 }
 
 async function submitOwnerLogin(){
-  const email = document.getElementById('owner-email-inp').value.trim().toLowerCase();
   const pass = document.getElementById('owner-pass-inp').value;
   const err = document.getElementById('owner-login-err');
   err.style.display = 'none';
   const btn = document.getElementById('owner-login-btn');
   if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
   try{
-    if(!email) throw new Error('Please enter your email.');
-    if(!pass) throw new Error('Please enter your password.');
-    // Sign in and check super_admin role — this sets the session
-    const {data, error} = await db.auth.signInWithPassword({email, password: pass});
-    if(error) throw new Error('Incorrect email or password.');
-    const {data:profile, error:profErr} = await db.from('profiles').select('role_title').eq('id', data.user.id).single();
-    if(profErr) throw new Error('Profile error: ' + profErr.message);
-    if(!profile) throw new Error('No profile found for this account.');
-    if(profile.role_title !== 'super_admin') throw new Error('Access denied.');
-    // Update currentUser so the rest of the app works correctly
-    currentUser = data.user;
+    if(!pass) throw new Error('Please enter the access code.');
+    // Passphrase gate — change this string to rotate access
+    const OWNER_CODE = 'Flagit@CEOKind!';
+    if(pass !== OWNER_CODE) throw new Error('Incorrect access code.');
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
   }catch(e){
-    err.textContent = e.message || 'Invalid credentials.';
+    err.textContent = e.message || 'Incorrect access code.';
     err.style.display = 'block';
   }finally{
     if(btn){ btn.disabled=false; btn.textContent='Enter'; }
@@ -2134,9 +2126,8 @@ y += boxH + 6;
       <div style="font-size:12px;color:var(--text2);margin-top:4px">Restricted area</div>
     </div>
     <div id="owner-login-err" class="error-box"></div>
-    <label class="field-label">Email</label>
-    <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
-    <label class="field-label">Password</label>
+    <input type="hidden" id="owner-email-inp" />
+    <label class="field-label">Access code</label>
     <div class="pw-wrap" style="margin-bottom:16px"><input type="password" id="owner-pass-inp" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitOwnerLogin()" /><button type="button" class="pw-eye" onclick="togglePw('owner-pass-inp',this)"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
