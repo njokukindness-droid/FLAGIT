@@ -80,30 +80,46 @@ button{cursor:pointer}
 <body>
 
 
-<!-- VERIFY SCREEN -->
+<!-- RESET PASSWORD SCREEN (replaces old OTP verify screen) -->
 <div class="screen" id="screen-verify">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:22px">
         <div style="width:52px;height:52px;border-radius:50%;background:var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" fill="none" stroke="var(--brand)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
         <div class="wordmark" style="font-size:20px">FLAG<span>IT</span></div>
-        <div style="font-size:14px;font-weight:600;margin-top:6px">Verify your email</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:4px" id="verify-sub">Enter the 6-digit code sent to your email</div>
+        <div style="font-size:14px;font-weight:600;margin-top:6px">Reset your password</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px" id="verify-sub">Enter your email and we'll send a reset link</div>
       </div>
       <div class="card">
         <div id="verify-err" class="error-box"></div>
         <div id="verify-ok" class="success-box"></div>
-        <div class="otp-row">
-          <input class="otp-input" id="otp0" maxlength="1" inputmode="numeric" oninput="otpInput(0,this)" onkeydown="otpKey(0,event)" />
-          <input class="otp-input" id="otp1" maxlength="1" inputmode="numeric" oninput="otpInput(1,this)" onkeydown="otpKey(1,event)" />
-          <input class="otp-input" id="otp2" maxlength="1" inputmode="numeric" oninput="otpInput(2,this)" onkeydown="otpKey(2,event)" />
-          <input class="otp-input" id="otp3" maxlength="1" inputmode="numeric" oninput="otpInput(3,this)" onkeydown="otpKey(3,event)" />
-          <input class="otp-input" id="otp4" maxlength="1" inputmode="numeric" oninput="otpInput(4,this)" onkeydown="otpKey(4,event)" />
-          <input class="otp-input" id="otp5" maxlength="1" inputmode="numeric" oninput="otpInput(5,this)" onkeydown="otpKey(5,event)" />
-        </div>
-        <button class="btn btn-brand" style="width:100%;margin-bottom:10px" onclick="verifyOtpAndEnter()">Verify &amp; enter FLAGIT</button>
-        <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" onclick="resendOtp()">Resend code</button>
-        <div style="text-align:center;font-size:13px"><span onclick="showAuth()" style="color:var(--brand);cursor:pointer">Back</span></div>
+        <label class="field-label">Email address</label>
+        <input type="email" id="reset-email" placeholder="your@email.com" style="margin-bottom:16px" />
+        <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="reset-btn" onclick="sendPasswordReset()">Send reset link</button>
+        <div style="text-align:center;font-size:13px"><span onclick="showAuth()" style="color:var(--brand);cursor:pointer">Back to sign in</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SET NEW PASSWORD SCREEN (shown after clicking reset link in email) -->
+<div class="screen" id="screen-newpass">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--surface2)">
+    <div style="width:100%;max-width:400px">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" fill="none" stroke="var(--brand)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="wordmark" style="font-size:20px">FLAG<span>IT</span></div>
+        <div style="font-size:14px;font-weight:600;margin-top:6px">Set new password</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">Choose a secure password for your account</div>
+      </div>
+      <div class="card">
+        <div id="newpass-err" class="error-box"></div>
+        <div id="newpass-ok" class="success-box"></div>
+        <label class="field-label">New password</label>
+        <input type="password" id="np-pass1" placeholder="Min 8 characters" style="margin-bottom:12px" />
+        <label class="field-label">Confirm password</label>
+        <input type="password" id="np-pass2" placeholder="Repeat password" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')setNewPassword()" />
+        <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="newpass-btn" onclick="setNewPassword()">Update password</button>
       </div>
     </div>
   </div>
@@ -310,58 +326,68 @@ function setAuthBusy(busy,btnId,label,busyLabel){ const btn=document.getElementB
 
 
 function showAuth(){ document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-auth').classList.add('active'); }
+function showReset(){ const e=document.getElementById('si-email').value.trim(); if(e) document.getElementById('reset-email').value=e; hideBox('verify-err'); hideBox('verify-ok'); document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
 function showVerify(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
-function showApp(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.remove('active'); document.getElementById('app-shell').classList.add('active'); }
+function showApp(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-newpass').classList.remove('active'); document.getElementById('app-shell').classList.add('active'); }
+function showNewPass(){ ['screen-auth','screen-verify','app-shell'].forEach(function(id){document.getElementById(id).classList.remove('active');}); document.getElementById('screen-newpass').classList.add('active'); }
 
-// ── SIGN IN ──────────────────────────────────────────
+// ── SIGN IN (password) ───────────────────────────────
 async function startSignIn(){
   hideBox('auth-err'); hideBox('auth-ok');
   if(!db) return showError('auth-err','Connection error. Please refresh.');
   const projectName=document.getElementById('si-project').value.trim();
   const email=document.getElementById('si-email').value.trim().toLowerCase();
+  const pass=document.getElementById('si-pass').value;
   if(!projectName) return showError('auth-err','Please enter your project name.');
   if(!email) return showError('auth-err','Please enter your email address.');
-  authMode='signin';
-  setAuthBusy(true,'signin-btn','Sign in with code','Sending...');
+  if(!pass) return showError('auth-err','Please enter your password.');
+  setAuthBusy(true,'signin-btn','Sign in','Signing in...');
   try{
-    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+    const {data,error}=await db.auth.signInWithPassword({email,password:pass});
     if(error) throw error;
     pendingAuth={email,projectName,fullName:'',roleTitle:'',mode:'signin'};
-    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
-    for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
-    showVerify();
-    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
-  }catch(err){ showError('auth-err',err.message||'Could not send code.'); }
-  finally{ setAuthBusy(false,'signin-btn','Sign in with code','Sending...'); }
-}
-
-
-// ── OTP ──────────────────────────────────────────────
-function otpInput(i,el){ el.value=el.value.replace(/\D/g,''); if(el.value&&i<5) document.getElementById('otp'+(i+1)).focus(); }
-function otpKey(i,e){ if(e.key==='Backspace'&&!document.getElementById('otp'+i).value&&i>0) document.getElementById('otp'+(i-1)).focus(); }
-function otpValue(){ let v='',i=0; while(document.getElementById('otp'+i)){ v+=document.getElementById('otp'+i).value; i++; } return v; }
-
-async function verifyOtpAndEnter(){
-  hideBox('verify-err'); hideBox('verify-ok');
-  if(!db) return showError('verify-err','Connection error.');
-  if(!pendingAuth) return showError('verify-err','Session expired. Go back and request a new code.');
-  const token=otpValue();
-  if(token.length<6) return showError('verify-err','Please enter the full verification code.');
-  try{
-    const {error}=await db.auth.verifyOtp({email:pendingAuth.email,token,type:'email'});
-    if(error) throw error;
     await postVerifyBootstrap();
-  }catch(err){ showError('verify-err',err.message||'Verification failed.'); }
+  }catch(err){
+    const msg=err.message||'';
+    if(msg.toLowerCase().includes('invalid login')||msg.toLowerCase().includes('invalid credentials')){
+      showError('auth-err','Incorrect email or password. Use "Forgot password?" to reset.');
+    } else {
+      showError('auth-err',msg||'Sign in failed. Please try again.');
+    }
+  }
+  finally{ setAuthBusy(false,'signin-btn','Sign in','Signing in...'); }
 }
 
-async function resendOtp(){
+// ── PASSWORD RESET ────────────────────────────────────
+async function sendPasswordReset(){
   hideBox('verify-err'); hideBox('verify-ok');
-  if(!db||!pendingAuth) return showError('verify-err','Go back and start again.');
+  if(!db) return showError('verify-err','Connection error. Please refresh.');
+  const email=document.getElementById('reset-email').value.trim().toLowerCase();
+  if(!email) return showError('verify-err','Please enter your email address.');
+  setAuthBusy(true,'reset-btn','Send reset link','Sending...');
   try{
-    const {error}=await db.auth.signInWithOtp({email:pendingAuth.email,options:{shouldCreateUser:pendingAuth.mode==='signup',data:pendingAuth.mode==='signup'?{full_name:pendingAuth.fullName,role_title:pendingAuth.roleTitle,pending_project_name:pendingAuth.projectName}:{}}});
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
     if(error) throw error;
-    showSuccess('verify-ok','A new code has been sent to your email.');
-  }catch(err){ showError('verify-err',err.message||'Could not resend code.'); }
+    showSuccess('verify-ok','Reset link sent! Check your inbox and spam folder.');
+  }catch(err){ showError('verify-err',err.message||'Could not send reset link.'); }
+  finally{ setAuthBusy(false,'reset-btn','Send reset link','Sending...'); }
+}
+
+// ── SET NEW PASSWORD (after reset link click) ─────────
+async function setNewPassword(){
+  hideBox('newpass-err'); hideBox('newpass-ok');
+  const p1=document.getElementById('np-pass1').value;
+  const p2=document.getElementById('np-pass2').value;
+  if(p1.length<8) return showError('newpass-err','Password must be at least 8 characters.');
+  if(p1!==p2) return showError('newpass-err','Passwords do not match.');
+  setAuthBusy(true,'newpass-btn','Update password','Updating...');
+  try{
+    const {error}=await db.auth.updateUser({password:p1});
+    if(error) throw error;
+    showSuccess('newpass-ok','Password updated! Signing you in...');
+    setTimeout(function(){ showAuth(); },2000);
+  }catch(err){ showError('newpass-err',err.message||'Could not update password.'); }
+  finally{ setAuthBusy(false,'newpass-btn','Update password','Updating...'); }
 }
 
 // ── BOOTSTRAP ────────────────────────────────────────
@@ -1567,7 +1593,10 @@ async function init(){
   initDb();
   if(!db){ showError('auth-err','Could not connect to the database.'); return; }
   try{ const{data:{session}}=await db.auth.getSession(); if(session){await startApp();return;} }catch(e){ console.warn('Session check failed:',e.message); }
-  db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
+  db.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');}
+    if(event==='PASSWORD_RECOVERY'){showNewPass();}
+  });
 }
 // ── OWNER DASHBOARD ──────────────────────────────────
 let ownerTapCount = 0;
@@ -2058,10 +2087,12 @@ y += boxH + 6;
           <label class="field-label">Project name</label>
           <input type="text" id="si-project" placeholder="e.g. AABC LLC" style="margin-bottom:12px" />
           <label class="field-label">Email address</label>
-          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:16px" />
-          <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
-          
-        
+          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:12px" onkeydown="if(event.key==='Enter')document.getElementById('si-pass').focus()" />
+          <label class="field-label">Password</label>
+          <input type="password" id="si-pass" placeholder="••••••••" style="margin-bottom:6px" onkeydown="if(event.key==='Enter')startSignIn()" />
+          <div style="text-align:right;margin-bottom:14px"><span onclick="showReset()" style="font-size:12px;color:var(--brand);cursor:pointer">Forgot password?</span></div>
+          <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in</button>
+
         <div class="note" style="margin-top:14px">Team members in the same project share the same project data. Each organisation's data is completely separate.</div>
       </div>
     </div>
