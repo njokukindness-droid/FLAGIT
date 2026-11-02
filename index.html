@@ -1694,8 +1694,8 @@ async function submitOwnerLogin(){
     const {data, error} = await db.auth.signInWithPassword({email, password:pass});
     if(error) throw new Error('Invalid credentials.');
     // Check the profile has super_admin role
-    const {data:profile} = await db.from('profiles').select('role').eq('id', data.user.id).single();
-    if(!profile || profile.role !== 'super_admin') throw new Error('Invalid credentials.');
+    const {data:profile} = await db.from('profiles').select('role_title').eq('id', data.user.id).single();
+    if(!profile || profile.role_title !== 'super_admin') throw new Error('Invalid credentials.');
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
