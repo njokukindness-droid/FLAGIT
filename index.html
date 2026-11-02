@@ -1685,19 +1685,18 @@ function closeOwnerLogin(){
 }
 
 async function submitOwnerLogin(){
-  const email = document.getElementById('owner-email-inp').value.trim().toLowerCase();
   const pass = document.getElementById('owner-pass-inp').value;
   const err = document.getElementById('owner-login-err');
   err.style.display = 'none';
   const btn = document.getElementById('owner-login-btn');
   if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
   try{
-    // Authenticate via Supabase — no credentials stored in code
-    const {data, error} = await db.auth.signInWithPassword({email, password:pass});
-    if(error) throw new Error('Invalid credentials.');
-    // Check the profile has super_admin role
-    const {data:profile} = await db.from('profiles').select('role_title').eq('id', data.user.id).single();
-    if(!profile || profile.role_title !== 'super_admin') throw new Error('Invalid credentials.');
+    // Re-verify the currently logged-in user's password, then check super_admin role
+    if(!currentUser) throw new Error('Not logged in.');
+    const {error} = await db.auth.signInWithPassword({email: currentUser.email, password: pass});
+    if(error) throw new Error('Incorrect password.');
+    const {data:profile} = await db.from('profiles').select('role_title').eq('id', currentUser.id).single();
+    if(!profile || profile.role_title !== 'super_admin') throw new Error('Access denied.');
     ownerAuthenticated = true;
     closeOwnerLogin();
     openOwnerDashboard();
