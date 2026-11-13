@@ -88,9 +88,10 @@ button{cursor:pointer}
 <body>
 
 <!-- AUTH SCREEN -->
+<!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(216,90,48,0.08) 0%,transparent 60%),#0D0D0D">
-    <div style="width:100%;max-width:430px">
+    <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:24px">
         <div class="logo-icon"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="#0D0D0D"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="#0D0D0D" opacity=".7"/></svg></div>
         <div class="wordmark">FLAG<span>IT</span></div>
@@ -99,47 +100,60 @@ button{cursor:pointer}
       <div class="card">
         <div id="auth-err" class="error-box"></div>
         <div id="auth-ok" class="success-box"></div>
+
+        <!-- SIGN IN FORM -->
         <div id="form-signin">
-          <div style="font-size:16px;font-weight:700;margin-bottom:14px">Sign in</div>
-          <label class="field-label">Project name</label>
-          <input type="text" id="si-project" placeholder="e.g. AABC LLC" style="margin-bottom:12px" />
+          <div style="font-size:16px;font-weight:700;margin-bottom:16px">Sign in</div>
           <label class="field-label">Email address</label>
-          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:16px" />
-          <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in with code</button>
-          <div style="text-align:center;font-size:13px;color:var(--text2)">New user? <span onclick="toggleForm('signup')" style="color:var(--brand);cursor:pointer;font-weight:600">Create account</span></div>
+          <input type="email" id="si-email" placeholder="your@email.com" style="margin-bottom:12px" onkeydown="if(event.key==='Enter')startSignIn()" />
+          <label class="field-label">Password</label>
+          <input type="password" id="si-pass" placeholder="Your password" style="margin-bottom:6px" onkeydown="if(event.key==='Enter')startSignIn()" />
+          <div style="text-align:right;margin-bottom:16px"><span onclick="toggleForm('forgot')" style="font-size:12px;color:var(--brand);cursor:pointer">Forgot password?</span></div>
+          <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="signin-btn" onclick="startSignIn()">Sign in</button>
+          <div style="text-align:center;font-size:13px;color:var(--text2)">New to FLAGIT? <span onclick="toggleForm('signup')" style="color:var(--brand);cursor:pointer;font-weight:600">Create account</span></div>
         </div>
-        
-        <div class="note" style="margin-top:14px">Team members in the same project share the same project data. Each organisation's data is completely separate.</div>
+
+        <!-- SIGN UP FORM -->
+        <div id="form-signup" style="display:none">
+          <div style="font-size:16px;font-weight:700;margin-bottom:16px">Create account</div>
+          <label class="field-label">Full name</label>
+          <input type="text" id="su-name" placeholder="e.g. John Smith" style="margin-bottom:12px" />
+          <label class="field-label">Role / Job title</label>
+          <input type="text" id="su-role" placeholder="e.g. HSE Officer" style="margin-bottom:12px" />
+          <label class="field-label">Project / Organisation name</label>
+          <input type="text" id="su-project" placeholder="e.g. ACME Construction" style="margin-bottom:12px" />
+          <label class="field-label">Email address</label>
+          <input type="email" id="su-email" placeholder="your@email.com" style="margin-bottom:12px" />
+          <label class="field-label">Password</label>
+          <input type="password" id="su-pass" placeholder="Min. 8 characters" style="margin-bottom:16px" />
+          <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="signup-btn" onclick="startSignUp()">Create account</button>
+          <div style="text-align:center;font-size:13px;color:var(--text2)">Already have an account? <span onclick="toggleForm('signin')" style="color:var(--brand);cursor:pointer;font-weight:600">Sign in</span></div>
+        </div>
+
+        <!-- FORGOT PASSWORD FORM -->
+        <div id="form-forgot" style="display:none">
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px">Reset password</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Enter your email and we'll send a password reset link.</div>
+          <label class="field-label">Email address</label>
+          <input type="email" id="fp-email" placeholder="your@email.com" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')sendPasswordReset()" />
+          <button class="btn btn-brand" style="width:100%;margin-bottom:10px" id="forgot-btn" onclick="sendPasswordReset()">Send reset link</button>
+          <div style="text-align:center;font-size:13px"><span onclick="toggleForm('signin')" style="color:var(--brand);cursor:pointer">Back to sign in</span></div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- VERIFY SCREEN -->
-<div class="screen" id="screen-verify">
+<!-- PROJECT PICKER SCREEN -->
+<div class="screen" id="screen-projects">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(216,90,48,0.08) 0%,transparent 60%),#0D0D0D">
     <div style="width:100%;max-width:400px">
-      <div style="text-align:center;margin-bottom:22px">
-        <div style="width:52px;height:52px;border-radius:50%;background:var(--brand-lt);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" fill="none" stroke="var(--brand)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-        <div class="wordmark" style="font-size:20px">FLAG<span>IT</span></div>
-        <div style="font-size:14px;font-weight:600;margin-top:6px">Verify your email</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:4px" id="verify-sub">Enter the 6-digit code sent to your email</div>
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="wordmark">FLAG<span>IT</span></div>
+        <div style="font-size:14px;color:var(--text2);margin-top:6px">Select a project to continue</div>
       </div>
-      <div class="card">
-        <div id="verify-err" class="error-box"></div>
-        <div id="verify-ok" class="success-box"></div>
-        <div class="otp-row">
-          <input class="otp-input" id="otp0" maxlength="1" inputmode="numeric" oninput="otpInput(0,this)" onkeydown="otpKey(0,event)" />
-          <input class="otp-input" id="otp1" maxlength="1" inputmode="numeric" oninput="otpInput(1,this)" onkeydown="otpKey(1,event)" />
-          <input class="otp-input" id="otp2" maxlength="1" inputmode="numeric" oninput="otpInput(2,this)" onkeydown="otpKey(2,event)" />
-          <input class="otp-input" id="otp3" maxlength="1" inputmode="numeric" oninput="otpInput(3,this)" onkeydown="otpKey(3,event)" />
-          <input class="otp-input" id="otp4" maxlength="1" inputmode="numeric" oninput="otpInput(4,this)" onkeydown="otpKey(4,event)" />
-          <input class="otp-input" id="otp5" maxlength="1" inputmode="numeric" oninput="otpInput(5,this)" onkeydown="otpKey(5,event)" />
-        </div>
-        <button class="btn btn-brand" style="width:100%;margin-bottom:10px" onclick="verifyOtpAndEnter()">Verify &amp; enter FLAGIT</button>
-        <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" onclick="resendOtp()">Resend code</button>
-        <div style="text-align:center;font-size:13px"><span onclick="showAuth()" style="color:var(--brand);cursor:pointer">Back</span></div>
-      </div>
+      <div id="project-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:16px" onclick="signOut()">Sign out</button>
     </div>
   </div>
 </div>
@@ -348,32 +362,55 @@ function esc(str=''){ return str.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;',
 function setAuthBusy(busy,btnId,label,busyLabel){ const btn=document.getElementById(btnId); if(!btn)return; btn.disabled=busy; btn.textContent=busy?busyLabel:label; }
 
 // ── FORM TOGGLE ─────────────────────────────────────
-function toggleForm(mode){ authMode=mode; hideBox('auth-err'); hideBox('auth-ok'); document.getElementById('form-signin').style.display=mode==='signin'?'block':'none'; document.getElementById('form-signup').style.display=mode==='signup'?'block':'none'; }
+function toggleForm(mode){
+  authMode=mode;
+  hideBox('auth-err'); hideBox('auth-ok');
+  document.getElementById('form-signin').style.display=mode==='signin'?'block':'none';
+  document.getElementById('form-signup').style.display=mode==='signup'?'block':'none';
+  document.getElementById('form-forgot').style.display=mode==='forgot'?'block':'none';
+}
 
-function showAuth(){ document.getElementById('screen-verify').classList.remove('active'); document.getElementById('screen-auth').classList.add('active'); }
-function showVerify(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.add('active'); }
-function showApp(){ document.getElementById('screen-auth').classList.remove('active'); document.getElementById('screen-verify').classList.remove('active'); document.getElementById('app-shell').classList.add('active'); }
+function showAuth(){
+  ['screen-projects'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('active'); });
+  document.getElementById('screen-auth').classList.add('active');
+}
+function showApp(){
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('screen-projects').classList.remove('active');
+  document.getElementById('app-shell').classList.add('active');
+}
+function showProjectPicker(){
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('screen-projects').classList.add('active');
+  renderProjectPicker();
+}
 
 // ── SIGN IN ──────────────────────────────────────────
 async function startSignIn(){
   hideBox('auth-err'); hideBox('auth-ok');
   if(!db) return showError('auth-err','Connection error. Please refresh.');
-  const projectName=document.getElementById('si-project').value.trim();
   const email=document.getElementById('si-email').value.trim().toLowerCase();
-  if(!projectName) return showError('auth-err','Please enter your project name.');
+  const password=document.getElementById('si-pass').value;
   if(!email) return showError('auth-err','Please enter your email address.');
-  authMode='signin';
-  setAuthBusy(true,'signin-btn','Sign in with code','Sending...');
+  if(!password) return showError('auth-err','Please enter your password.');
+  setAuthBusy(true,'signin-btn','Sign in','Signing in...');
   try{
-    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
+    const {data,error}=await db.auth.signInWithPassword({email,password});
     if(error) throw error;
-    pendingAuth={email,projectName,fullName:'',roleTitle:'',mode:'signin'};
-    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
-    for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
-    showVerify();
-    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
-  }catch(err){ showError('auth-err',err.message||'Could not send code.'); }
-  finally{ setAuthBusy(false,'signin-btn','Sign in with code','Sending...'); }
+    currentUser=data.user;
+    await hydrateUserAndProjects();
+    if(myProjects.length===0) throw new Error('No projects found for this account.');
+    if(myProjects.length===1){
+      currentProject=myProjects[0];
+      await enterProject();
+    } else {
+      showProjectPicker();
+    }
+  }catch(err){
+    const msg=err.message||'Sign in failed.';
+    showError('auth-err', msg.includes('Invalid login')?'Incorrect email or password. If you haven\'t set a password yet, use Forgot password below.':msg);
+  }
+  finally{ setAuthBusy(false,'signin-btn','Sign in','Signing in...'); }
 }
 
 // ── SIGN UP ──────────────────────────────────────────
@@ -384,53 +421,67 @@ async function startSignUp(){
   const email=document.getElementById('su-email').value.trim().toLowerCase();
   const fullName=document.getElementById('su-name').value.trim();
   const roleTitle=document.getElementById('su-role').value.trim();
-  if(!projectName) return showError('auth-err','Please enter your project / organisation name.');
-  if(!email) return showError('auth-err','Please enter your email address.');
+  const password=document.getElementById('su-pass').value;
   if(!fullName) return showError('auth-err','Please enter your full name.');
   if(!roleTitle) return showError('auth-err','Please enter your role.');
-  authMode='signup';
-  setAuthBusy(true,'signup-btn','Sign up & send code','Sending...');
+  if(!projectName) return showError('auth-err','Please enter your project / organisation name.');
+  if(!email) return showError('auth-err','Please enter your email address.');
+  if(!password||password.length<8) return showError('auth-err','Password must be at least 8 characters.');
+  setAuthBusy(true,'signup-btn','Create account','Creating...');
   try{
-    const {error}=await db.auth.signInWithOtp({email,options:{shouldCreateUser:true,data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName}}});
+    const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName}}});
     if(error) throw error;
-    pendingAuth={email,projectName,fullName,roleTitle,mode:'signup'};
-    document.getElementById('verify-sub').textContent=`Enter the 6-digit code sent to ${email}`;
-    for(let i=0;i<6;i++) document.getElementById('otp'+i).value='';
-    showVerify();
-    showSuccess('verify-ok','Code sent! Check your inbox and spam folder.');
+    if(data.user&&data.session){
+      currentUser=data.user;
+      pendingAuth={email,projectName,fullName,roleTitle,mode:'signup'};
+      await postVerifyBootstrap();
+    } else {
+      showSuccess('auth-ok','Account created! Check your email to confirm your address, then sign in.');
+      toggleForm('signin');
+    }
   }catch(err){ showError('auth-err',err.message||'Could not create account.'); }
-  finally{ setAuthBusy(false,'signup-btn','Sign up & send code','Sending...'); }
+  finally{ setAuthBusy(false,'signup-btn','Create account','Creating...'); }
 }
 
-// ── OTP ──────────────────────────────────────────────
-function otpInput(i,el){ el.value=el.value.replace(/\D/g,''); if(el.value&&i<5) document.getElementById('otp'+(i+1)).focus(); }
-function otpKey(i,e){ if(e.key==='Backspace'&&!document.getElementById('otp'+i).value&&i>0) document.getElementById('otp'+(i-1)).focus(); }
-function otpValue(){ let v='',i=0; while(document.getElementById('otp'+i)){ v+=document.getElementById('otp'+i).value; i++; } return v; }
-
-async function verifyOtpAndEnter(){
-  hideBox('verify-err'); hideBox('verify-ok');
-  if(!db) return showError('verify-err','Connection error.');
-  if(!pendingAuth) return showError('verify-err','Session expired. Go back and request a new code.');
-  const token=otpValue();
-  if(token.length<6) return showError('verify-err','Please enter the full verification code.');
+// ── FORGOT PASSWORD ──────────────────────────────────
+async function sendPasswordReset(){
+  hideBox('auth-err'); hideBox('auth-ok');
+  if(!db) return showError('auth-err','Connection error. Please refresh.');
+  const email=document.getElementById('fp-email').value.trim().toLowerCase();
+  if(!email) return showError('auth-err','Please enter your email address.');
+  setAuthBusy(true,'forgot-btn','Send reset link','Sending...');
   try{
-    const {error}=await db.auth.verifyOtp({email:pendingAuth.email,token,type:'email'});
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
     if(error) throw error;
-    await postVerifyBootstrap();
-  }catch(err){ showError('verify-err',err.message||'Verification failed.'); }
+    showSuccess('auth-ok','Password reset link sent! Check your inbox.');
+    toggleForm('signin');
+  }catch(err){ showError('auth-err',err.message||'Could not send reset email.'); }
+  finally{ setAuthBusy(false,'forgot-btn','Send reset link','Sending...'); }
 }
 
-async function resendOtp(){
-  hideBox('verify-err'); hideBox('verify-ok');
-  if(!db||!pendingAuth) return showError('verify-err','Go back and start again.');
-  try{
-    const {error}=await db.auth.signInWithOtp({email:pendingAuth.email,options:{shouldCreateUser:pendingAuth.mode==='signup',data:pendingAuth.mode==='signup'?{full_name:pendingAuth.fullName,role_title:pendingAuth.roleTitle,pending_project_name:pendingAuth.projectName}:{}}});
-    if(error) throw error;
-    showSuccess('verify-ok','A new code has been sent to your email.');
-  }catch(err){ showError('verify-err',err.message||'Could not resend code.'); }
+// ── PROJECT PICKER ───────────────────────────────────
+function renderProjectPicker(){
+  const list=document.getElementById('project-list');
+  list.innerHTML=myProjects.map(p=>`
+    <button onclick="selectProject('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;text-align:left;cursor:pointer;width:100%;transition:border-color .15s">
+      <div style="font-weight:700;font-size:15px;color:var(--text1)">${esc(p.name)}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">${esc(p.role_title||'Team member')}${p.is_admin?' · Admin':''}</div>
+    </button>`).join('');
 }
 
-// ── BOOTSTRAP ────────────────────────────────────────
+async function selectProject(projectId){
+  currentProject=myProjects.find(p=>p.id===projectId)||myProjects[0];
+  await enterProject();
+}
+
+async function signOut(){
+  await db.auth.signOut();
+  currentUser=null; currentProject=null; myProjects=[];
+  toggleForm('signin');
+  showAuth();
+}
+
+// ── BOOTSTRAP (new signups only) ─────────────────────
 async function postVerifyBootstrap(){
   const {data:{user},error:userErr}=await db.auth.getUser();
   if(userErr||!user) throw userErr||new Error('No signed-in user found.');
@@ -441,13 +492,22 @@ async function postVerifyBootstrap(){
   await db.from('profiles').upsert({id:user.id,email:user.email,full_name:fullName,role_title:roleTitle,updated_at:new Date().toISOString()});
   let project=null;
   if(projectName){
-    project=await getOrCreateProject(projectName,pendingAuth?.mode==='signup');
-    if(!project) throw new Error('Project not found. Use "Create account" to register a new project, or check the project name.');
-    const ok=await ensureMembership(project,fullName,roleTitle,pendingAuth?.mode==='signup');
-    if(!ok) throw new Error('Your email is not a member of that project. Check the project name or sign up to create a new one.');
-    localStorage.setItem(`flagit:lastProject:${user.id}`,project.id);
+    project=await getOrCreateProject(projectName,true);
+    if(project){ await ensureMembership(project,fullName,roleTitle,true); localStorage.setItem(`flagit:lastProject:${user.id}`,project.id); }
   }
-  await startApp(project?.id||null);
+  await hydrateUserAndProjects();
+  if(myProjects.length===0) throw new Error('No project membership found. Contact your administrator.');
+  if(myProjects.length===1){ currentProject=myProjects[0]; await enterProject(); }
+  else { showProjectPicker(); }
+}
+
+// ── ENTER PROJECT ────────────────────────────────────
+async function enterProject(){
+  localStorage.setItem(`flagit:lastProject:${currentUser.id}`,currentProject.id);
+  renderTopBar();
+  showApp();
+  await refreshAll();
+  attachRealtime(); await startPresence();
 }
 
 async function getOrCreateProject(projectName,allowCreate){
@@ -482,23 +542,10 @@ async function hydrateUserAndProjects(){
 
 async function startApp(projectId){
   await hydrateUserAndProjects();
-  const {data:invite}=await db.from('invites').select('*').eq('email',currentUser.email.toLowerCase()).eq('status','pending').maybeSingle();
-  if(!invite){
-    await db.auth.signOut();
-    alert('Access denied. You must be invited to use FLAGIT. Contact your project administrator.');
-    document.getElementById('app-shell').classList.remove('active');
-    document.getElementById('screen-auth').classList.add('active');
-    return;
-  }
-  await db.from('invites').update({status:'accepted'}).eq('id',invite.id);
   if(!myProjects.length) throw new Error('No project membership found.');
   const last=projectId||localStorage.getItem(`flagit:lastProject:${currentUser.id}`)||myProjects[0].id;
   currentProject=myProjects.find(p=>p.id===last)||myProjects[0];
-  localStorage.setItem(`flagit:lastProject:${currentUser.id}`,currentProject.id);
-  renderTopBar();
-  showApp();
-  await refreshAll();
-  attachRealtime(); await startPresence();
+  await enterProject();
 }
 
 function renderTopBar(){
