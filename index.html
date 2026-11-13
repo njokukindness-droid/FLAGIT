@@ -192,6 +192,7 @@ button{cursor:pointer}
       <svg width="20" height="20" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="var(--brand)"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="var(--brand-dk)"/></svg>
       <span class="wordmark" style="font-size:18px">FLAG<span>IT</span></span>
       <span class="pill" id="top-project-pill">No project</span>
+      <img id="top-project-logo" src="" alt="Company logo" style="display:none;max-height:28px;max-width:90px;object-fit:contain;border-radius:4px;background:#fff;padding:3px 6px;border:1px solid var(--border)" />
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
       <button class="btn btn-ghost" style="padding:8px 10px" onclick="toggleNotifications()">Alerts <span id="notif-badge" class="notification-dot hidden">0</span></button>
@@ -590,6 +591,17 @@ function renderTopBar(){
   if(myProjects.length>1){ pill.style.cursor='pointer'; pill.onclick=toggleProjectSwitcher; pill.title='Click to switch project'; pill.innerHTML=`${esc(currentProject?.name||'No project')} ▾`; }
   // Show/hide Team tab based on role
   document.getElementById('nav-members').style.display='flex';
+  // Update company logo in top bar
+  const logoImg=document.getElementById('top-project-logo');
+  if(logoImg){
+    if(currentProject?.logo_url){
+      logoImg.src=currentProject.logo_url;
+      logoImg.style.display='block';
+    } else {
+      logoImg.src='';
+      logoImg.style.display='none';
+    }
+  }
 }
 
 async function refreshAll(){ await Promise.all([loadObservations(),loadNotifications()]); renderContent(); }
@@ -760,6 +772,26 @@ async function renderMembers(c){
       html+=`</div>`;
     }
 
+    // Project logo (admin only)
+    if(isAdmin()){
+      const {data:proj}=await db.from('projects').select('logo_url').eq('id',currentProject.id).single();
+      const logoUrl=proj?.logo_url||'';
+      html+=`<div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:12px">Company logo</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">The logo will appear on printed observation reports. Use a PNG or JPG with a transparent or white background.</div>
+        ${logoUrl?`<div style="margin-bottom:12px"><img src="${logoUrl}" alt="Company logo" style="max-height:64px;max-width:200px;object-fit:contain;border-radius:6px;background:#fff;padding:6px;border:1px solid var(--border)" /></div>`:'<div style="margin-bottom:12px;font-size:12px;color:var(--text2)">No logo uploaded yet.</div>'}
+        <div id="logo-upload-err" class="error-box" style="display:none"></div>
+        <div id="logo-upload-ok" class="success-box" style="display:none"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-brand" style="padding:8px 14px;cursor:pointer;font-size:13px">
+            ${logoUrl?'Replace logo':'Upload logo'}
+            <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadProjectLogo(this)" />
+          </label>
+          ${logoUrl?`<button class="btn btn-red" style="padding:8px 14px;font-size:13px" onclick="removeProjectLogo()">Remove logo</button>`:''}
+        </div>
+      </div>`;
+    }
+
     c.innerHTML=html;
   }catch(err){
     c.innerHTML=`<div class="card"><div class="small" style="color:var(--red)">Could not load members: ${esc(err.message)}</div></div>`;
@@ -872,6 +904,57 @@ async function renderDetail(c,obs){
 }
 
 function closeDetail(){ selectedObservation=null; renderContent(); }
+
+// ── PROJECT LOGO UPLOAD (admin only) ──────────────────
+async function uploadProjectLogo(input){
+  const file=input.files[0];
+  if(!file) return;
+  const errBox=document.getElementById('logo-upload-err');
+  const okBox=document.getElementById('logo-upload-ok');
+  if(errBox) errBox.style.display='none';
+  if(okBox) okBox.style.display='none';
+
+  // Validate type & size (max 2 MB)
+  if(!file.type.startsWith('image/')){
+    if(errBox){errBox.textContent='Please select an image file (PNG, JPG, or WebP).';errBox.style.display='block';}
+    return;
+  }
+  if(file.size>2*1024*1024){
+    if(errBox){errBox.textContent='Image must be under 2 MB.';errBox.style.display='block';}
+    return;
+  }
+
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    const path=`${currentProject.id}/logo.${ext}`;
+    // Upload to Supabase Storage bucket "project-logos"
+    const {error:upErr}=await db.storage.from('project-logos').upload(path,file,{upsert:true,contentType:file.type});
+    if(upErr) throw upErr;
+    // Get public URL
+    const {data:urlData}=db.storage.from('project-logos').getPublicUrl(path);
+    const logoUrl=urlData.publicUrl+'?t='+Date.now(); // cache-bust
+    // Save to projects table
+    const {error:dbErr}=await db.from('projects').update({logo_url:logoUrl}).eq('id',currentProject.id);
+    if(dbErr) throw dbErr;
+    // Update in-memory project
+    currentProject.logo_url=logoUrl;
+    if(okBox){okBox.textContent='Logo uploaded successfully!';okBox.style.display='block';}
+    // Re-render team view to show new logo
+    setTimeout(()=>renderContent(),800);
+  }catch(err){
+    if(errBox){errBox.textContent=err.message||'Upload failed. Please try again.';errBox.style.display='block';}
+  }
+}
+
+async function removeProjectLogo(){
+  if(!confirm('Remove the company logo?')) return;
+  try{
+    const {error}=await db.from('projects').update({logo_url:null}).eq('id',currentProject.id);
+    if(error) throw error;
+    currentProject.logo_url=null;
+    renderContent();
+  }catch(err){ alert(err.message||'Could not remove logo.'); }
+}
 
 // ── DELETE OBSERVATION (admin only) ───────────────────
 async function deleteObservation(id){
