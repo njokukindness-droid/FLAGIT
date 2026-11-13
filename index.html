@@ -1015,7 +1015,7 @@ async function saveObservation(){
   const hazardCodes=[...document.querySelectorAll('.hc:checked')].map(cb=>cb.value).join(',');
   const riskMap={'High':'1','Medium':'2','Low':'3'};
   const sevVal=document.getElementById('f-sev').value;
-  const payload={project_id:currentProject.id,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value.trim(),severity:sevVal,risk_level:riskMap[sevVal]||'2',hazard_codes:hazardCodes,responsible_person:document.getElementById('f-responsible').value.trim(),timeframe:document.getElementById('f-time').value,is_ncr:document.getElementById('f-ncr').checked,description:document.getElementById('f-desc').value.trim(),recommendation:document.getElementById('f-rec').value.trim(),reporter_name:currentProject.full_name||currentUser.email,created_by:currentUser.id,updated_at:new Date().toISOString()};
+  const payload={project_id:currentProject.id,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value.trim(),severity:sevVal,responsible_person:document.getElementById('f-responsible').value.trim(),timeframe:document.getElementById('f-time').value,is_ncr:document.getElementById('f-ncr').checked,description:document.getElementById('f-desc').value.trim(),recommendation:document.getElementById('f-rec').value.trim(),reporter_name:currentProject.full_name||currentUser.email,created_by:currentUser.id,updated_at:new Date().toISOString()};
   if(!payload.location||!payload.description) return showError('obs-err','Location and description are required.');
   const btn=document.getElementById('save-obs-btn');
   btn.disabled=true; btn.textContent='Saving...';
