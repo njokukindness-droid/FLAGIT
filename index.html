@@ -48,6 +48,11 @@ button{cursor:pointer}
 .logo-icon{width:56px;height:56px;border-radius:16px;background:var(--brand);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
 .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}.otp-input{width:46px;height:54px;border:1px solid var(--border);border-radius:8px;text-align:center;font-size:24px;outline:none;background:var(--surface2);color:var(--text)}
 .otp-input:focus{border-color:var(--brand)}
+.owner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px}
+.owner-panel{background:var(--surface);border-radius:16px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto}
+.owner-dashboard{display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px}.metric .lbl{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}.metric .val{font-size:28px;font-weight:800;color:var(--text1);margin-top:4px}
+.btn-red{background:#fef2f2;color:#c0392b;border:1px solid #fca5a5}.btn-red:hover{background:#fee2e2}
 #app-shell{display:none;flex-direction:column;min-height:100vh}#app-shell.active{display:flex}
 .top-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .content{max-width:820px;width:100%;margin:0 auto;padding:16px 16px 92px}
@@ -88,12 +93,34 @@ button{cursor:pointer}
 <body>
 
 <!-- AUTH SCREEN -->
+<!-- OWNER LOGIN -->
+<div class="owner-overlay" id="owner-login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:24px">
+  <div class="owner-panel">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:700;color:var(--brand)">Owner Access</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Restricted area</div>
+    </div>
+    <div id="owner-login-err" class="error-box"></div>
+    <label class="field-label">Email</label>
+    <input type="email" id="owner-email-inp" placeholder="owner@email.com" style="margin-bottom:12px" />
+    <label class="field-label">Password</label>
+    <input type="password" id="owner-pass-inp" placeholder="••••••••" style="margin-bottom:16px" onkeydown="if(event.key==='Enter')submitOwnerLogin()" />
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeOwnerLogin()">Cancel</button>
+      <button class="btn btn-brand" style="flex:2" onclick="submitOwnerLogin()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- OWNER DASHBOARD -->
+<div id="owner-dashboard" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:190;overflow-y:auto;padding:16px"></div>
+
 <!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(216,90,48,0.08) 0%,transparent 60%),#0D0D0D">
     <div style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:24px">
-        <div class="logo-icon"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="#0D0D0D"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="#0D0D0D" opacity=".7"/></svg></div>
+        <div class="logo-icon" onclick="handleOwnerTap()" style="cursor:default"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M6 4h14l-4 7 4 7H6V4z" fill="#0D0D0D"/><rect x="4" y="4" width="3" height="22" rx="1.5" fill="#0D0D0D" opacity=".7"/></svg></div>
         <div class="wordmark">FLAG<span>IT</span></div>
         <div style="font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-top:2px">HSE Observation Platform</div>
       </div>
@@ -1509,6 +1536,119 @@ async function init(){
   if(!db){ showError('auth-err','Could not connect to the database.'); return; }
   try{ const{data:{session}}=await db.auth.getSession(); if(session){await startApp();return;} }catch(e){ console.warn('Session check failed:',e.message); }
   db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
+}
+
+// ── OWNER DASHBOARD ──────────────────────────────────
+let ownerTapCount=0,ownerTapTimer=null,ownerAuthenticated=false;
+function handleOwnerTap(){ ownerTapCount++; clearTimeout(ownerTapTimer); ownerTapTimer=setTimeout(()=>{ownerTapCount=0;},2000); if(ownerTapCount>=5){ownerTapCount=0;showOwnerLogin();} }
+function showOwnerLogin(){ const o=document.getElementById('owner-login-overlay'); if(o) o.style.display='flex'; }
+function closeOwnerLogin(){ const o=document.getElementById('owner-login-overlay'); if(o) o.style.display='none'; document.getElementById('owner-email-inp').value=''; document.getElementById('owner-pass-inp').value=''; document.getElementById('owner-login-err').style.display='none'; }
+function submitOwnerLogin(){ const email=document.getElementById('owner-email-inp').value.trim().toLowerCase(); const pass=document.getElementById('owner-pass-inp').value; const err=document.getElementById('owner-login-err'); if(email!=='kindnessnjoku@outlook.com'||pass!=='Flagit@CEOKind!'){ err.textContent='Invalid credentials.'; err.style.display='block'; return; } ownerAuthenticated=true; closeOwnerLogin(); openOwnerDashboard(); }
+
+async function openOwnerDashboard(){
+  if(!ownerAuthenticated) return;
+  const dash=document.getElementById('owner-dashboard');
+  dash.style.display='block';
+  dash.innerHTML=`<div style="max-width:900px;margin:0 auto;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div><div style="font-size:22px;font-weight:700;color:var(--brand)">FLAGIT Owner Dashboard</div><div style="font-size:12px;color:var(--text2)">Super admin view — confidential</div></div>
+      <button class="btn btn-ghost" onclick="closeOwnerDashboard()">✕ Exit</button>
+    </div>
+    <div id="owner-content"><div style="color:var(--text2)">Loading...</div></div>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Create New Project</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input type="text" id="new-project-name" placeholder="Organisation / Project name" style="flex:1;min-width:200px" />
+        <input type="email" id="new-admin-email" placeholder="Admin email address" style="flex:1;min-width:200px" />
+        <input type="text" id="new-admin-role" placeholder="Admin role title" style="flex:1;min-width:160px" />
+        <button class="btn btn-brand" onclick="ownerCreateProject()">Create & Invite Admin</button>
+      </div>
+      <div id="owner-create-msg" style="margin-top:10px;font-size:13px;display:none"></div>
+    </div>
+  </div>`;
+  await loadOwnerContent();
+}
+
+function closeOwnerDashboard(){ document.getElementById('owner-dashboard').style.display='none'; ownerAuthenticated=false; }
+
+async function loadOwnerContent(){
+  try{
+    const [{data:projects,error:pErr},{data:members,error:mErr},{data:invites,error:iErr}]=await Promise.all([
+      db.rpc('get_all_projects_owner'),
+      db.rpc('get_all_members_owner'),
+      db.rpc('get_all_invites_owner')
+    ]);
+    if(pErr) throw pErr; if(mErr) throw mErr; if(iErr) throw iErr;
+    let html=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div class="metric"><div class="lbl">Total Projects</div><div class="val">${projects.length}</div></div>
+      <div class="metric"><div class="lbl">Total Members</div><div class="val">${members.length}</div></div>
+      <div class="metric"><div class="lbl">Pending Invites</div><div class="val">${(invites||[]).filter(i=>i.status==='pending').length}</div></div>
+    </div>`;
+    projects.forEach(p=>{
+      const pm=members.filter(m=>m.project_id===p.id);
+      const pi=(invites||[]).filter(i=>i.project_id===p.id&&i.status==='pending');
+      html+=`<div class="card" style="margin-bottom:14px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div><div style="font-size:16px;font-weight:700;color:#111">${esc(p.name)}</div><div style="font-size:11px;color:#888">${formatDate(p.created_at)} · ${pm.length} member${pm.length!==1?'s':''}</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="ownerInviteMember('${p.id}','${esc(p.name)}')">+ Invite Member</button>
+            <button class="btn btn-red" style="padding:6px 10px;font-size:12px" onclick="ownerSuspendProject('${p.id}','${esc(p.name)}')">Suspend</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${pm.map(m=>`<div style="background:#f5f6fa;border-radius:8px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:6px">${avatarHTML(m.full_name||'?',24)}<div><div style="font-weight:600;color:#111">${esc(m.full_name||'Unknown')}</div><div style="font-size:10px;color:#888">${esc(m.role_title||'Member')}${m.is_admin?' · Admin':''}</div></div></div>`).join('')}
+          ${pi.map(i=>`<div style="background:#fffbea;border-radius:8px;padding:6px 10px;font-size:12px;border:1px solid #f5c542"><div style="font-weight:600;color:#111">${esc(i.email)}</div><div style="font-size:10px;color:#b7791f">Pending · ${esc(i.role||'')}</div></div>`).join('')}
+        </div>
+      </div>`;
+    });
+    document.getElementById('owner-content').innerHTML=html;
+  }catch(err){ document.getElementById('owner-content').innerHTML=`<div style="color:var(--red)">Error: ${esc(err.message)}</div>`; }
+}
+
+async function ownerCreateProject(){
+  const name=document.getElementById('new-project-name').value.trim();
+  const email=document.getElementById('new-admin-email').value.trim().toLowerCase();
+  const role=document.getElementById('new-admin-role').value.trim();
+  const msg=document.getElementById('owner-create-msg');
+  if(!name||!email||!role){ msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='All fields are required.'; return; }
+  msg.style.display='block'; msg.style.color='var(--text2)'; msg.textContent='Creating project...';
+  try{
+    const slug=name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+    const {data:proj,error:pErr}=await db.from('projects').insert({name,slug}).select('*').single();
+    if(pErr) throw pErr;
+    const {error:iErr}=await db.from('invites').insert({email,project_id:proj.id,role,status:'pending',invited_by:null});
+    if(iErr) throw iErr;
+    // Send password setup email
+    await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+    msg.style.color='var(--green)'; msg.textContent=`✅ Project "${name}" created! Password setup email sent to ${email}.`;
+    document.getElementById('new-project-name').value=''; document.getElementById('new-admin-email').value=''; document.getElementById('new-admin-role').value='';
+    await loadOwnerContent();
+  }catch(err){ msg.style.color='var(--red)'; msg.textContent='Error: '+err.message; }
+}
+
+async function ownerInviteMember(projectId,projectName){
+  const email=prompt(`Invite to "${projectName}"\nEnter email address:`);
+  if(!email) return;
+  const role=prompt('Enter their role title:');
+  if(!role) return;
+  try{
+    const {error}=await db.from('invites').insert({email:email.trim().toLowerCase(),project_id:projectId,role,status:'pending',invited_by:null});
+    if(error) throw error;
+    // Send password setup email
+    await db.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo:window.location.href});
+    alert(`✅ Invite added & password setup email sent to ${email}`);
+    await loadOwnerContent();
+  }catch(err){ alert('Error: '+err.message); }
+}
+
+async function ownerSuspendProject(projectId,projectName){
+  if(!confirm(`Suspend "${projectName}"? All members will lose access immediately.`)) return;
+  try{
+    await db.from('invites').update({status:'revoked'}).eq('project_id',projectId);
+    await db.from('project_members').delete().eq('project_id',projectId);
+    alert(`✅ "${projectName}" suspended.`);
+    await loadOwnerContent();
+  }catch(err){ alert('Error: '+err.message); }
 }
 
 window.addEventListener('load',()=>{
