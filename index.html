@@ -1284,17 +1284,17 @@ async function askFlagitAI(){
         contents: [{
           parts: [{
             text:
-`You are an expert HSE adviser on an industrial site. A field officer raised this observation on FLAGIT:
+`You are a senior HSE adviser specialising in UAE construction safety regulations. A field officer raised this observation on FLAGIT:
 
 Category: ${cat}
 Location: ${loc}
 Severity: ${sev}
 Observation: ${desc}
 
-Provide practical numbered corrective action steps.
-Maximum 5 steps.
-Keep it under 80 words.
-No preamble.`
+Provide numbered corrective action steps. Where applicable, cite the specific UAE/Dubai regulation that applies — such as Dubai Municipality Technical Guidelines (e.g. TG-01, TG-07), UAE Federal Law No. 8 of 1980 (Labour Law), OSHAD-SF CoPs, Abu Dhabi EHS Framework, or relevant ISO/BS standards.
+
+Format each step as: [Step]. [Action] — [Regulation reference if applicable]
+Maximum 5 steps. Under 100 words. No preamble.`
           }]
         }]
       })
