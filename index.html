@@ -1277,9 +1277,12 @@ async function askFlagitAI(){
   errEl.style.display = 'none';
 
   try{
+    const controller = new AbortController();
+    const aiTimeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(getGeminiUrl(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         contents: [{
           parts: [{
@@ -1292,6 +1295,7 @@ Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai 
         }]
       })
     });
+    clearTimeout(aiTimeout);
 
     const data = await res.json();
 
@@ -1307,7 +1311,8 @@ Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai 
 
     recEl.value = text;
   }catch(err){
-    showAIErr(err.message || 'Could not reach FLAGIT AI. Please type manually.');
+    const msg = err.name==='AbortError' ? 'AI timed out (15s). Check your internet and try again.' : (err.message || 'Could not reach FLAGIT AI. Please type manually.');
+    showAIErr(msg);
   }finally{
     btn.disabled = false;
     status.style.display = 'none';
