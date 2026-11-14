@@ -952,10 +952,12 @@ async function uploadProjectLogo(input){
     if(upErr) throw upErr;
     // Get public URL
     const {data:urlData}=db.storage.from('project-logos').getPublicUrl(path);
-    const logoUrl=urlData.publicUrl+'?t='+Date.now(); // cache-bust
+    // Store clean URL (no cache-bust param) so it's stable
+    const logoUrl=urlData.publicUrl;
     // Save to projects table
-    const {error:dbErr}=await db.from('projects').update({logo_url:logoUrl}).eq('id',currentProject.id);
+    const {data:updData,error:dbErr}=await db.from('projects').update({logo_url:logoUrl}).eq('id',currentProject.id).select();
     if(dbErr) throw dbErr;
+    console.log('Logo DB update result:',updData,dbErr);
     // Update in-memory project
     currentProject.logo_url=logoUrl;
     if(okBox){okBox.textContent='Logo uploaded successfully!';okBox.style.display='block';}
@@ -1294,26 +1296,12 @@ function showDailyReportPicker(){
 }
 
 async function fetchImageAsBase64(url){
-  // Try canvas approach first (avoids CORS issues with Supabase storage)
+  if(!url) return null;
+  // Try direct fetch first (works for public Supabase storage URLs)
   try{
-    return await new Promise((resolve,reject)=>{
-      const img=new Image();
-      img.crossOrigin='anonymous';
-      img.onload=()=>{
-        const canvas=document.createElement('canvas');
-        canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
-        canvas.getContext('2d').drawImage(img,0,0);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror=reject;
-      // Strip cache-bust param for cleaner URL
-      img.src=url.split('?')[0]+'?t='+Date.now();
-    });
-  }catch(e){
-    // Fallback: fetch as blob
-    try{
-      const res=await fetch(url,{mode:'cors'});
-      if(!res.ok) return null;
+    const cleanUrl=url.split('?')[0];
+    const res=await fetch(cleanUrl,{mode:'cors',credentials:'omit'});
+    if(res.ok){
       const blob=await res.blob();
       return await new Promise((resolve,reject)=>{
         const reader=new FileReader();
@@ -1321,8 +1309,23 @@ async function fetchImageAsBase64(url){
         reader.onerror=reject;
         reader.readAsDataURL(blob);
       });
-    }catch(e2){ return null; }
-  }
+    }
+  }catch(e){ console.warn('fetchImageAsBase64 fetch failed:',e); }
+  // Fallback: canvas drawImage
+  try{
+    return await new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.crossOrigin='anonymous';
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=img.naturalWidth||200; canvas.height=img.naturalHeight||100;
+        canvas.getContext('2d').drawImage(img,0,0);
+        try{ resolve(canvas.toDataURL('image/png')); }catch(ce){ reject(ce); }
+      };
+      img.onerror=(err)=>{ console.warn('img load error:',err); reject(err); };
+      img.src=url.split('?')[0]+'?nocache='+Date.now();
+    });
+  }catch(e2){ console.warn('fetchImageAsBase64 canvas failed:',e2); return null; }
 }
 
 async function generateDailyReport(dateStr){
@@ -1471,7 +1474,7 @@ async function generateDailyReport(dateStr){
     // Row height: taller if photos present so they fit nicely
     const hasInitial=photos.initial.length>0;
     const hasCloseout=photos.closeout.length>0;
-    const rowH=hasInitial||hasCloseout?28:16;
+    const rowH=hasInitial||hasCloseout?42:16;
 
     if(y+rowH>H-14){
       addTableFooter(doc,W,H,margin);
