@@ -1293,12 +1293,39 @@ function showDailyReportPicker(){
   document.body.appendChild(picker);
 }
 
+async function fetchImageAsBase64(url){
+  try{
+    const res=await fetch(url);
+    if(!res.ok) return null;
+    const blob=await res.blob();
+    return await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onloadend=()=>resolve(reader.result);
+      reader.onerror=reject;
+      reader.readAsDataURL(blob);
+    });
+  }catch(e){ return null; }
+}
+
 async function generateDailyReport(dateStr){
   document.getElementById('daily-report-picker')?.remove();
   if(!dateStr){ alert('Please select a date'); return; }
   const {jsPDF}=window.jspdf;
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
+
+  // Pre-fetch all photos as base64
+  const obsPhotosMap={};
+  for(const obs of dayObs){
+    const photos=obs.observation_photos||[];
+    const urls=await Promise.all(photos.map(p=>getSignedUrl(p.file_path)));
+    const b64s=await Promise.all(urls.map(u=>u?fetchImageAsBase64(u):null));
+    // Split into initial (non-closeout) and closeout photos
+    obsPhotosMap[obs.id]={
+      initial: b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
+      closeout: b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
+    };
+  }
 
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,H=210,margin=10,contentW=W-margin*2;
@@ -1406,14 +1433,18 @@ async function generateDailyReport(dateStr){
   });
   y+=8;
 
-  dayObs.forEach((obs,idx)=>{
-    const rowH=16;
+  for(let idx=0;idx<dayObs.length;idx++){
+    const obs=dayObs[idx];
+    const photos=obsPhotosMap[obs.id]||{initial:[],closeout:[]};
+    // Row height: taller if photos present so they fit nicely
+    const hasInitial=photos.initial.length>0;
+    const hasCloseout=photos.closeout.length>0;
+    const rowH=hasInitial||hasCloseout?28:16;
+
     if(y+rowH>H-14){
-      // Footer before new page
       addTableFooter(doc,W,H,margin);
       doc.addPage();
       y=addPageHeader(doc,doc.internal.getNumberOfPages());
-      // Repeat header
       let hx2=margin;
       colDefs.forEach(col=>{
         doc.setFillColor(0,70,127); doc.rect(hx2,y,col.w,8,'F');
@@ -1425,31 +1456,61 @@ async function generateDailyReport(dateStr){
       });
       y+=8;
     }
+
     const bg=idx%2===0?[249,251,255]:[255,255,255];
     doc.setFillColor(...bg); doc.rect(margin,y,contentW,rowH,'F');
     doc.setDrawColor(200,210,225);
-    const vals=[
+
+    const textVals=[
       String(idx+1),
+      null, // photo initial — handled below
       obs.hazard_codes||'-',
-      '(see photo)',
-      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).slice(0,4).join('\n'),
-      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).slice(0,4).join('\n'),
+      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).slice(0,5).join('\n'),
+      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).slice(0,5).join('\n'),
       obs.responsible_person||'-',
-      obs.risk_level||'-',
+      obs.risk_level||obs.severity||'-',
       obs.timeframe||'-',
-      '(see photo)',
+      null, // photo closeout — handled below
       obs.closeout_action?displayDate:'-'
     ];
+
+    // Column order matches colDefs: SN, HazardCode, PhotoInitial, Description, Recommendation, Responsible, Cat, Timeframe, PhotoCloseout, DateCompleted
+    // But colDefs has: SN(0), HazardCode(1), PhotoInitial(2), Desc(3), Rec(4), Responsible(5), Cat(6), Timeframe(7), PhotoFinal(8), DateCompleted(9)
+    // textVals index matches colDefs index
     let cx=margin;
-    vals.forEach((val,vi)=>{
-      doc.rect(cx,y,colDefs[vi].w,rowH,'S');
-      doc.setTextColor(30,30,30); doc.setFontSize(5.5); doc.setFont('helvetica','normal');
-      const txtLines=String(val).split('\n');
-      txtLines.forEach((line,li)=>{ doc.text(line,cx+1,y+3+li*3.2); });
-      cx+=colDefs[vi].w;
-    });
+    for(let vi=0;vi<colDefs.length;vi++){
+      const col=colDefs[vi];
+      doc.rect(cx,y,col.w,rowH,'S');
+
+      if(vi===2 && hasInitial){
+        // Embed initial photos (up to 2 side by side)
+        const imgW=Math.min((col.w-2)/Math.min(photos.initial.length,2), col.w-2);
+        const imgH=Math.min(rowH-3, imgW*0.75);
+        photos.initial.slice(0,2).forEach((b64,pi)=>{
+          try{ doc.addImage(b64,'JPEG',cx+1+pi*(imgW+1),y+1,imgW,imgH); }catch(e){}
+        });
+      } else if(vi===8 && hasCloseout){
+        // Embed closeout photos (up to 2)
+        const imgW=Math.min((col.w-2)/Math.min(photos.closeout.length,2), col.w-2);
+        const imgH=Math.min(rowH-3, imgW*0.75);
+        photos.closeout.slice(0,2).forEach((b64,pi)=>{
+          try{ doc.addImage(b64,'JPEG',cx+1+pi*(imgW+1),y+1,imgW,imgH); }catch(e){}
+        });
+      } else if(vi===2 && !hasInitial){
+        doc.setTextColor(150,150,150); doc.setFontSize(5); doc.setFont('helvetica','italic');
+        doc.text('No photo',cx+col.w/2,y+rowH/2,{align:'center'});
+      } else if(vi===8 && !hasCloseout){
+        doc.setTextColor(150,150,150); doc.setFontSize(5); doc.setFont('helvetica','italic');
+        doc.text('No photo',cx+col.w/2,y+rowH/2,{align:'center'});
+      } else if(textVals[vi]!==null){
+        doc.setTextColor(30,30,30); doc.setFontSize(5.5); doc.setFont('helvetica','normal');
+        const txtLines=String(textVals[vi]).split('\n');
+        txtLines.forEach((line,li)=>{ doc.text(line,cx+1,y+3+li*3.2); });
+      }
+      cx+=col.w;
+    }
     y+=rowH;
-  });
+  }
 
   addTableFooter(doc,W,H,margin);
   const pages=doc.internal.getNumberOfPages();
