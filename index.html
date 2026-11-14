@@ -1340,13 +1340,17 @@ async function generateDailyReport(dateStr){
   const obsPhotosMap={};
   for(const obs of dayObs){
     const photos=obs.observation_photos||[];
+    console.log(`Obs ${obs.id}: ${photos.length} photos`);
     const urls=await Promise.all(photos.map(p=>getSignedUrl(p.file_path)));
+    console.log('Signed URLs:',urls);
     const b64s=await Promise.all(urls.map(u=>u?fetchImageAsBase64(u):null));
+    console.log('Base64 results:',b64s.map(b=>b?b.slice(0,40)+'...':'null'));
     // Split into initial (non-closeout) and closeout photos
     obsPhotosMap[obs.id]={
       initial: b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
       closeout: b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
     };
+    console.log(`obsPhotosMap[${obs.id}]:`,obsPhotosMap[obs.id].initial.length,'initial,',obsPhotosMap[obs.id].closeout.length,'closeout');
   }
 
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
