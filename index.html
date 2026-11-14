@@ -1369,16 +1369,19 @@ async function generateDailyReport(dateStr){
     });
     y+=14;
 
-    // Submitted to / Prepared by table
-    const roleRows=[{role:'Submitted to',name:'HSE Manager',title:'HSE Manager',company:orgName},{role:'Prepared by',name:preparedBy,title:'HSE Officer',company:orgName}];
-    ['Role','Job Title','Name','Company','Signature','Date'].forEach((h,i)=>{
-      const colWidths=[22,28,40,40,30,20]; const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
+    // Submitted to / Prepared by table — widths must sum to contentW (277)
+    // Role(25)+JobTitle(35)+Name(55)+Company(72)+Signature(55)+Date(35) = 277
+    const roleHeaders=['Role','Job Title','Name','Company','Signature','Date'];
+    const colWidths=[25,35,55,72,55,35];
+    roleHeaders.forEach((h,i)=>{
+      const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
       doc.setFillColor(220,230,242); doc.rect(hx,y,colWidths[i],5,'F');
+      doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],5,'S');
       doc.setTextColor(30,30,30); doc.setFontSize(6); doc.setFont('helvetica','bold');
       doc.text(h,hx+1,y+3.5);
     });
     y+=5;
-    const colWidths=[22,28,40,40,30,20];
+    const roleRows=[{role:'Submitted to',name:'HSE Manager',title:'HSE Manager',company:orgName},{role:'Prepared by',name:preparedBy,title:'HSE Officer',company:orgName}];
     roleRows.forEach(row=>{
       const vals=[row.role,row.title,row.name,row.company,'',displayDate];
       vals.forEach((v,i)=>{
@@ -1386,7 +1389,7 @@ async function generateDailyReport(dateStr){
         doc.setFillColor(252,253,255); doc.rect(hx,y,colWidths[i],6,'F');
         doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],6,'S');
         doc.setTextColor(30,30,30); doc.setFontSize(7); doc.setFont('helvetica','normal');
-        doc.text(v,hx+1,y+4);
+        doc.text(String(v),hx+1,y+4);
       });
       y+=6;
     });
