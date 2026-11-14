@@ -1335,13 +1335,21 @@ async function generateDailyReport(dateStr){
   const projName=currentProject.name||'';
   const projLocation=currentProject.location||dayObs[0]?.location||'Site';
 
+  // Fetch logo as base64 if available
+  const logoB64=currentProject.logo_url?await fetchImageAsBase64(currentProject.logo_url):null;
+
   function addPageHeader(doc,pageNum){
     // Top banner
     doc.setFillColor(0,70,127); doc.rect(0,0,W,12,'F');
     doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
     doc.text('HEALTH, SAFETY AND ENVIRONMENT',W/2,5.5,{align:'center'});
     doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text(orgName,margin,5.5);
+    // Logo in top-left of banner, or org name if no logo
+    if(logoB64){
+      try{ doc.addImage(logoB64,'PNG',margin,1,30,10); }catch(e){ doc.text(orgName,margin,5.5); }
+    } else {
+      doc.text(orgName,margin,5.5);
+    }
     doc.text('HSE OBSERVATION REPORT',W/2,9.5,{align:'center'});
 
     let y=16;
@@ -1409,11 +1417,12 @@ async function generateDailyReport(dateStr){
     return y;
   }
 
-  // Table headers
+  // Table headers — widths must sum to contentW (277mm)
+  // SN(8)+HazCode(14)+PhotoInit(26)+Desc(60)+Rec(55)+Responsible(30)+Cat(12)+DateTo(22)+PhotoFinal(26)+DateComp(24) = 277
   const colDefs=[
-    {h:'SN',w:8},{h:'Hazard\nCode',w:14},{h:'Photo\nInitial',w:18},{h:'Hazards / Aspects\n& Risk / Impact',w:40},
-    {h:'Recommended\nCorrective Action',w:40},{h:'Responsible\nPerson',w:24},{h:'Cat.',w:10},
-    {h:'Date to\nComplete',w:20},{h:'Photo\nFinal',w:18},{h:'Date\nCompleted',w:20}
+    {h:'SN',w:8},{h:'Hazard\nCode',w:14},{h:'Photo\nInitial',w:26},{h:'Hazards / Aspects\n& Risk / Impact',w:60},
+    {h:'Recommended\nCorrective Action',w:55},{h:'Responsible\nPerson',w:30},{h:'Cat.',w:12},
+    {h:'Date to\nComplete',w:22},{h:'Photo\nFinal',w:26},{h:'Date\nCompleted',w:24}
   ];
 
   let y=addPageHeader(doc,1);
