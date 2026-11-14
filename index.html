@@ -1298,10 +1298,9 @@ function showDailyReportPicker(){
 
 async function fetchImageAsBase64(url){
   if(!url) return null;
-  // Try direct fetch first (works for public Supabase storage URLs)
+  // Use fetch with the signed URL directly — no CORS mode stripping
   try{
-    const cleanUrl=url.split('?')[0];
-    const res=await fetch(cleanUrl,{mode:'cors',credentials:'omit'});
+    const res=await fetch(url);
     if(res.ok){
       const blob=await res.blob();
       return await new Promise((resolve,reject)=>{
@@ -1311,20 +1310,20 @@ async function fetchImageAsBase64(url){
         reader.readAsDataURL(blob);
       });
     }
+    console.warn('fetchImageAsBase64 fetch status:',res.status,url);
   }catch(e){ console.warn('fetchImageAsBase64 fetch failed:',e); }
   // Fallback: canvas drawImage
   try{
     return await new Promise((resolve,reject)=>{
       const img=new Image();
-      img.crossOrigin='anonymous';
       img.onload=()=>{
         const canvas=document.createElement('canvas');
         canvas.width=img.naturalWidth||200; canvas.height=img.naturalHeight||100;
         canvas.getContext('2d').drawImage(img,0,0);
-        try{ resolve(canvas.toDataURL('image/png')); }catch(ce){ reject(ce); }
+        try{ resolve(canvas.toDataURL('image/jpeg')); }catch(ce){ reject(ce); }
       };
       img.onerror=(err)=>{ console.warn('img load error:',err); reject(err); };
-      img.src=url.split('?')[0]+'?nocache='+Date.now();
+      img.src=url;
     });
   }catch(e2){ console.warn('fetchImageAsBase64 canvas failed:',e2); return null; }
 }
@@ -1336,21 +1335,28 @@ async function generateDailyReport(dateStr){
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
 
-  // Pre-fetch all photos as base64
+  // Pre-fetch all photos as base64 using storage download (bypasses CORS/signed URL issues)
+  async function photoToBase64(filePath){
+    try{
+      const {data,error}=await db.storage.from(STORAGE_BUCKET).download(filePath);
+      if(error||!data){ console.warn('download error:',error); return null; }
+      return await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onloadend=()=>resolve(reader.result);
+        reader.onerror=reject;
+        reader.readAsDataURL(data);
+      });
+    }catch(e){ console.warn('photoToBase64 failed:',e); return null; }
+  }
+
   const obsPhotosMap={};
   for(const obs of dayObs){
     const photos=obs.observation_photos||[];
-    console.log(`Obs ${obs.id}: ${photos.length} photos`);
-    const urls=await Promise.all(photos.map(p=>getSignedUrl(p.file_path)));
-    console.log('Signed URLs:',urls);
-    const b64s=await Promise.all(urls.map(u=>u?fetchImageAsBase64(u):null));
-    console.log('Base64 results:',b64s.map(b=>b?b.slice(0,40)+'...':'null'));
-    // Split into initial (non-closeout) and closeout photos
+    const b64s=await Promise.all(photos.map(p=>photoToBase64(p.file_path)));
     obsPhotosMap[obs.id]={
       initial: b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
       closeout: b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
     };
-    console.log(`obsPhotosMap[${obs.id}]:`,obsPhotosMap[obs.id].initial.length,'initial,',obsPhotosMap[obs.id].closeout.length,'closeout');
   }
 
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
