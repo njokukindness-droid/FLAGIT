@@ -999,9 +999,10 @@ function openPhotoViewer(src){ document.getElementById('photo-viewer-img').src=s
 function closePhotoViewer(e){ if(e.target.id==='photo-viewer'||e.target.classList.contains('close-x')) document.getElementById('photo-viewer').style.display='none'; }
 
 async function getSignedUrl(path){
+  if(!path) return null;
   if(signedUrlCache.has(path)) return signedUrlCache.get(path);
   const {data,error}=await db.storage.from(STORAGE_BUCKET).createSignedUrl(path,3600);
-  if(error) return '';
+  if(error){ console.error('getSignedUrl error for',path,error); return null; }
   signedUrlCache.set(path,data.signedUrl);
   return data.signedUrl;
 }
@@ -1365,15 +1366,18 @@ async function generateDailyReport(dateStr){
     // Top banner
     doc.setFillColor(0,70,127); doc.rect(0,0,W,12,'F');
     doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-    doc.text('HEALTH, SAFETY AND ENVIRONMENT',W/2,5.5,{align:'center'});
+    doc.text('HEALTH, SAFETY AND ENVIRONMENT',W/2,5,{align:'center'});
     doc.setFontSize(7); doc.setFont('helvetica','normal');
-    // Logo in top-left of banner, or org name if no logo
+    doc.text('HSE OBSERVATION REPORT',W/2,9.5,{align:'center'});
+    // Logo top-right of banner (keeps title centred), or org name top-left if no logo
     if(logoB64){
-      try{ doc.addImage(logoB64,'PNG',margin,1,30,10); }catch(e){ doc.text(orgName,margin,5.5); }
+      try{
+        const logoW=28, logoH=10;
+        doc.addImage(logoB64,'PNG',W-margin-logoW,1,logoW,logoH);
+      }catch(e){ doc.text(orgName,margin,5.5); }
     } else {
       doc.text(orgName,margin,5.5);
     }
-    doc.text('HSE OBSERVATION REPORT',W/2,9.5,{align:'center'});
 
     let y=16;
     // Row 1: Project | Location | Date | Time
