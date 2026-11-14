@@ -16,6 +16,7 @@
 <title>FLAGIT — HSE Observation Platform</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -1292,7 +1293,7 @@ function showDailyReportPicker(){
   picker.id='daily-report-picker';
   picker.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface1);border:1px solid var(--border);border-radius:14px;padding:24px;width:320px;z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.35)';
   const today=new Date().toISOString().slice(0,10);
-  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select the date to generate PDF for</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px"><button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button><button class="btn btn-brand" style="flex:2" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">Generate PDF</button></div>`;
+  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select date and format</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-brand" style="flex:1" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">📄 PDF</button><button class="btn btn-brand" style="flex:1;background:#1a5276" onclick="generateDailyReportDocx(document.getElementById('daily-report-date').value)">📝 Word</button></div><button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button>`;
   document.body.appendChild(picker);
 }
 
@@ -1583,6 +1584,263 @@ async function generateDailyReport(dateStr){
 
 function addTableFooter(doc,W,H,margin){
   // Close bottom border of last row — nothing extra needed; footer added per page
+}
+
+// ── WORD (.docx) DAILY REPORT ─────────────────────────────────
+async function generateDailyReportDocx(dateStr){
+  document.getElementById('daily-report-picker')?.remove();
+  if(!dateStr){ alert('Please select a date'); return; }
+  const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
+  if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
+
+  const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,ImageRun,
+    AlignmentType,WidthType,BorderStyle,ShadingType,HeadingLevel,
+    PageOrientation,TableLayoutType,VerticalAlign,PageSize}=window.docx;
+
+  // Helper to make a shaded header cell
+  function hdrCell(text,w){
+    return new TableCell({
+      width:{size:w,type:WidthType.DXA},
+      shading:{type:ShadingType.CLEAR,color:'auto',fill:'00467F'},
+      verticalAlign:VerticalAlign.CENTER,
+      children:[new Paragraph({
+        alignment:AlignmentType.CENTER,
+        children:[new TextRun({text,bold:true,color:'FFFFFF',size:18,font:'Arial'})]
+      })]
+    });
+  }
+
+  // Helper for a plain data cell
+  function dataCell(text,w,opts={}){
+    return new TableCell({
+      width:{size:w,type:WidthType.DXA},
+      verticalAlign:VerticalAlign.CENTER,
+      shading:opts.shade?{type:ShadingType.CLEAR,color:'auto',fill:opts.shade}:undefined,
+      children:[new Paragraph({
+        alignment:opts.center?AlignmentType.CENTER:AlignmentType.LEFT,
+        children:[new TextRun({text:String(text||'-'),size:18,font:'Arial'})]
+      })]
+    });
+  }
+
+  // Helper for image cell
+  function imgCell(b64,w){
+    if(!b64) return dataCell('No photo',w,{center:true});
+    try{
+      const mimeMatch=b64.match(/^data:(image\/\w+);base64,/);
+      const mime=mimeMatch?mimeMatch[1]:'image/jpeg';
+      const imgType=mime.includes('png')?'png':'jpg';
+      const base64Data=b64.split(',')[1];
+      const binaryStr=atob(base64Data);
+      const bytes=new Uint8Array(binaryStr.length);
+      for(let i=0;i<binaryStr.length;i++) bytes[i]=binaryStr.charCodeAt(i);
+      return new TableCell({
+        width:{size:w,type:WidthType.DXA},
+        verticalAlign:VerticalAlign.CENTER,
+        children:[new Paragraph({
+          alignment:AlignmentType.CENTER,
+          children:[new ImageRun({data:bytes,type:imgType,transformation:{width:120,height:90}})]
+        })]
+      });
+    }catch(e){ return dataCell('No photo',w,{center:true}); }
+  }
+
+  // Download all photos
+  async function photoToBase64(filePath){
+    try{
+      const {data,error}=await db.storage.from(STORAGE_BUCKET).download(filePath);
+      if(error||!data) return null;
+      return await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onloadend=()=>resolve(reader.result);
+        reader.onerror=reject;
+        reader.readAsDataURL(data);
+      });
+    }catch(e){ return null; }
+  }
+
+  const obsPhotosMap={};
+  for(const obs of dayObs){
+    const photos=obs.observation_photos||[];
+    const b64s=await Promise.all(photos.map(p=>photoToBase64(p.file_path)));
+    obsPhotosMap[obs.id]={
+      initial:b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
+      closeout:b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
+    };
+  }
+
+  // Fetch logo
+  const {data:projData}=await db.from('projects').select('logo_url').eq('id',currentProject.id).single();
+  const logoUrl=projData?.logo_url||currentProject.logo_url||null;
+  let logoB64=null;
+  if(logoUrl){
+    try{
+      const {data:ldata}=await db.storage.from('project-logos').download(`${currentProject.id}/logo.${logoUrl.split('.').pop().split('?')[0]}`);
+      if(ldata) logoB64=await new Promise((res,rej)=>{const r=new FileReader();r.onloadend=()=>res(r.result);r.onerror=rej;r.readAsDataURL(ldata);});
+    }catch(e){}
+  }
+
+  const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
+  const preparedBy=currentProject.full_name||currentUser.email||'HSE Officer';
+  const projName=currentProject.name||'';
+  const projLocation=currentProject.location||dayObs[0]?.location||'Site';
+
+  // DXA units: 1440 = 1 inch; A4 landscape = 16838 x 11906 DXA; margins 720 each side => content = 15398
+  const contentW=15398;
+  // Col widths (DXA): SN(500)+HazCode(900)+PhotoInit(1800)+Desc(3200)+Rec(2800)+Responsible(1600)+Cat(700)+DateComplete(1398)+PhotoFinal(1800)+DateCompleted(1700) = 16398 — too wide
+  // Use: 500+800+1700+3000+2600+1500+700+1298+1700+1600 = 15398 ✓
+  const cw=[500,800,1700,3000,2600,1500,700,1298,1700,1600];
+
+  // Header info table (meta rows)
+  const metaTable=new Table({
+    width:{size:contentW,type:WidthType.DXA},
+    layout:TableLayoutType.FIXED,
+    rows:[
+      new TableRow({children:[
+        hdrCell('Project / Contract',cw[0]+cw[1]+cw[2]+cw[3]),
+        hdrCell('Location / Plot',cw[4]+cw[5]),
+        hdrCell('Date',cw[6]+cw[7]),
+        hdrCell('Time of Inspection',cw[8]+cw[9])
+      ]}),
+      new TableRow({children:[
+        dataCell(projName,cw[0]+cw[1]+cw[2]+cw[3]),
+        dataCell(projLocation,cw[4]+cw[5]),
+        dataCell(displayDate,cw[6]+cw[7]),
+        dataCell(new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),cw[8]+cw[9])
+      ]})
+    ]
+  });
+
+  // Role table
+  const roleCw=[1540,2000,3000,4158,2800,1900]; // sum=15398
+  const roleTable=new Table({
+    width:{size:contentW,type:WidthType.DXA},
+    layout:TableLayoutType.FIXED,
+    rows:[
+      new TableRow({children:['Role','Job Title','Name','Company','Signature','Date'].map((h,i)=>hdrCell(h,roleCw[i]))}),
+      new TableRow({children:[
+        dataCell('Submitted to',roleCw[0]),dataCell('HSE Manager',roleCw[1]),
+        dataCell('Abass Afolabi',roleCw[2]),dataCell(orgName,roleCw[3]),
+        dataCell('',roleCw[4]),dataCell(displayDate,roleCw[5])
+      ]}),
+      new TableRow({children:[
+        dataCell('Prepared by',roleCw[0]),dataCell('HSE Officer',roleCw[1]),
+        dataCell(preparedBy,roleCw[2]),dataCell(orgName,roleCw[3]),
+        dataCell('',roleCw[4]),dataCell(displayDate,roleCw[5])
+      ]})
+    ]
+  });
+
+  // Hazard code reference table
+  const hazardCodes=[
+    ['A','Working at Heights'],['B','Ladders/Scaffold'],['C','Lifting Plant & Equip'],['D','Mobile Plant & Vehicle'],
+    ['E','Hot Works'],['F','Portable Electrical Equip'],['G','Power Tools/Machinery'],['H','Fire & Explosion'],
+    ['I','Chemicals'],['J','Environmental Aspect'],['K','Access & Egress'],['L','Slips, Trips & Falls'],
+    ['M','Manual Handling'],['N','Hand Tools'],['O','Excavation'],['P','Emergency Equipment'],['Q','PPE'],
+    ['R','Confined Space'],['S','Others']
+  ];
+  const hzPerRow=5; const hzRows=[];
+  for(let i=0;i<hazardCodes.length;i+=hzPerRow){
+    const slice=hazardCodes.slice(i,i+hzPerRow);
+    while(slice.length<hzPerRow) slice.push(['','']);
+    hzRows.push(new TableRow({children:slice.map(([code,desc])=>new TableCell({
+      width:{size:Math.floor(contentW/hzPerRow),type:WidthType.DXA},
+      children:[new Paragraph({children:[
+        new TextRun({text:code?`${code}  ${desc}`:'',size:16,font:'Arial'})
+      ]})]
+    }))}));
+  }
+  const hazardTable=new Table({width:{size:contentW,type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:hzRows});
+
+  // Observations table
+  const obsHdrRow=new TableRow({children:[
+    hdrCell('SN',cw[0]),hdrCell('Hazard\nCode',cw[1]),hdrCell('Photo\nInitial',cw[2]),
+    hdrCell('Hazards / Aspects & Risk / Impact',cw[3]),hdrCell('Recommended\nCorrective Action',cw[4]),
+    hdrCell('Responsible\nPerson',cw[5]),hdrCell('Cat.',cw[6]),hdrCell('Date to\nComplete',cw[7]),
+    hdrCell('Photo\nFinal',cw[8]),hdrCell('Date\nCompleted',cw[9])
+  ]});
+
+  const obsRows=[obsHdrRow];
+  dayObs.forEach((obs,idx)=>{
+    const p=obsPhotosMap[obs.id]||{initial:[],closeout:[]};
+    obsRows.push(new TableRow({children:[
+      dataCell(String(idx+1),cw[0],{center:true}),
+      dataCell(obs.hazard_codes||'-',cw[1],{center:true}),
+      imgCell(p.initial[0]||null,cw[2]),
+      dataCell(obs.description||'-',cw[3]),
+      dataCell(obs.recommendation||'-',cw[4]),
+      dataCell(obs.responsible_person||'-',cw[5]),
+      dataCell(obs.risk_level||obs.severity||'-',cw[6],{center:true}),
+      dataCell(obs.timeframe||'-',cw[7],{center:true}),
+      imgCell(p.closeout[0]||null,cw[8]),
+      dataCell(obs.closeout_action?displayDate:'-',cw[9],{center:true})
+    ]}));
+  });
+  const obsTable=new Table({width:{size:contentW,type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:obsRows});
+
+  // Build logo paragraph if available
+  const headerChildren=[
+    new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:28,color:'FFFFFF',font:'Arial'})
+  ];
+  let logoPara=null;
+  if(logoB64){
+    try{
+      const mimeMatch=logoB64.match(/^data:(image\/\w+);base64,/);
+      const imgType=(mimeMatch&&mimeMatch[1].includes('png'))?'png':'jpg';
+      const base64Data=logoB64.split(',')[1];
+      const binaryStr=atob(base64Data);
+      const bytes=new Uint8Array(binaryStr.length);
+      for(let i=0;i<binaryStr.length;i++) bytes[i]=binaryStr.charCodeAt(i);
+      logoPara=new Paragraph({
+        alignment:AlignmentType.RIGHT,
+        children:[new ImageRun({data:bytes,type:imgType,transformation:{width:80,height:30}})]
+      });
+    }catch(e){}
+  }
+
+  const doc=new Document({
+    sections:[{
+      properties:{
+        page:{
+          size:{width:16838,height:11906,orientation:PageOrientation.LANDSCAPE},
+          margin:{top:720,bottom:720,left:720,right:720}
+        }
+      },
+      children:[
+        // Blue header banner
+        new Table({
+          width:{size:contentW,type:WidthType.DXA},
+          layout:TableLayoutType.FIXED,
+          rows:[new TableRow({children:[new TableCell({
+            width:{size:contentW,type:WidthType.DXA},
+            shading:{type:ShadingType.CLEAR,color:'auto',fill:'00467F'},
+            children:[
+              new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:28,color:'FFFFFF',font:'Arial'})]}),
+              new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'HSE OBSERVATION REPORT',size:20,color:'FFFFFF',font:'Arial'})]}),
+              ...(logoPara?[logoPara]:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:orgName,size:18,color:'FFFFFF',font:'Arial'})]})])
+            ]
+          })]})]}),
+        new Paragraph({text:''}),
+        metaTable,
+        new Paragraph({text:''}),
+        roleCw&&roleTable,
+        new Paragraph({text:'',spacing:{before:100,after:100}}),
+        new Paragraph({children:[new TextRun({text:'HAZARD CODE REFERENCE',bold:true,size:20,font:'Arial'})]}),
+        hazardTable,
+        new Paragraph({text:'',spacing:{before:100,after:100}}),
+        obsTable
+      ].filter(Boolean)
+    }]
+  });
+
+  const blob=await Packer.toBlob(doc);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`HSE_Observation_Report_${dateStr}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── TRACKER REPORT (XLSX / log format) ────────────────────────
