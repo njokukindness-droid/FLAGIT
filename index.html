@@ -340,13 +340,38 @@ button{cursor:pointer}
 const SUPABASE_URL = 'https://ighaahpdqkexayeleczd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HwEY1zGWH0g0FFhNQ-185g_C71Q_KET';
 const STORAGE_BUCKET = 'observation-photos';
-function getGeminiKey(){
-  return localStorage.getItem('flagit:gemini_key') || '';
+// Gemini key — cached in memory after first fetch, never in localStorage or HTML
+let _geminiKeyCache = null;
+async function getGeminiKey(){
+  if(_geminiKeyCache) return _geminiKeyCache;
+  try{
+    const {data}=await db.from('project_settings').select('value').eq('project_id',currentProject.id).eq('key','gemini_api_key').maybeSingle();
+    if(data?.value){ _geminiKeyCache=data.value; return _geminiKeyCache; }
+  }catch(e){}
+  return '';
 }
 
-function getGeminiUrl(){
-  const key = getGeminiKey();
+function getGeminiUrl(key){
   return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`;
+}
+
+async function saveGeminiKey(){
+  const val=document.getElementById('ai-key-input')?.value?.trim();
+  const errBox=document.getElementById('ai-key-err');
+  const okBox=document.getElementById('ai-key-ok');
+  if(!val){ if(errBox){errBox.textContent='Please paste a key first.';errBox.style.display='block';} return; }
+  const {error}=await db.from('project_settings').upsert({project_id:currentProject.id,key:'gemini_api_key',value:val},{onConflict:'project_id,key'});
+  if(error){ if(errBox){errBox.textContent=error.message;errBox.style.display='block';} return; }
+  _geminiKeyCache=val;
+  if(okBox){okBox.textContent='API key saved successfully.';okBox.style.display='block';}
+  setTimeout(()=>renderContent(),1200);
+}
+
+async function removeGeminiKey(){
+  if(!confirm('Remove the Gemini API key? Ask Flagit AI will stop working.')) return;
+  await db.from('project_settings').delete().eq('project_id',currentProject.id).eq('key','gemini_api_key');
+  _geminiKeyCache=null;
+  renderContent();
 }
 const SEVERITY_STYLES = {
   Low:{bg:'#e6f3e8',text:'#1a6b2a',border:'#7bbf8a'},
@@ -772,6 +797,24 @@ async function renderMembers(c){
         </div>`;
       });
       html+=`</div>`;
+    }
+
+    // AI key (admin only)
+    if(isAdmin()){
+      const {data:aiRow}=await db.from('project_settings').select('value').eq('project_id',currentProject.id).eq('key','gemini_api_key').maybeSingle();
+      const hasKey=!!(aiRow?.value);
+      html+=`<div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:8px">Ask Flagit AI — Gemini API Key</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">The AI recommendation feature uses Google Gemini. Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--brand)">aistudio.google.com</a> → Get API key.</div>
+        ${hasKey?'<div style="font-size:13px;color:#1a6b2a;margin-bottom:10px">✓ API key is set</div>':'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">No key set — Ask Flagit AI is disabled.</div>'}
+        <div id="ai-key-err" class="error-box" style="display:none"></div>
+        <div id="ai-key-ok" class="success-box" style="display:none"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="password" id="ai-key-input" placeholder="${hasKey?'Enter new key to replace':'Paste Gemini API key'}" style="flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text1);font-size:13px" />
+          <button class="btn btn-brand" style="padding:8px 14px;font-size:13px" onclick="saveGeminiKey()">Save key</button>
+          ${hasKey?`<button class="btn btn-red" style="padding:8px 14px;font-size:13px" onclick="removeGeminiKey()">Remove</button>`:''}
+        </div>
+      </div>`;
     }
 
     // Project logo (admin only)
@@ -1218,8 +1261,8 @@ async function askFlagitAI(){
   const desc = document.getElementById('f-desc').value.trim();
   if(!desc) return showAIErr('Please describe your observation first.');
 
-  const key = getGeminiKey();
-  if(!key) return showAIErr('Gemini API key is not set on this device yet.');
+  const key = await getGeminiKey();
+  if(!key) return showAIErr('Ask Flagit AI is not set up yet. Ask your admin to add the Gemini API key in Team settings.');
 
   const cat = document.getElementById('f-cat').value;
   const loc = document.getElementById('f-loc').value.trim() || 'site';
@@ -1234,7 +1277,7 @@ async function askFlagitAI(){
   errEl.style.display = 'none';
 
   try{
-    const res = await fetch(getGeminiUrl(), {
+    const res = await fetch(getGeminiUrl(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
