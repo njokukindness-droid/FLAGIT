@@ -1,4 +1,5 @@
-const CACHE = 'flagit-v20261114b';
+const CACHE = 'flagit-v20261115';
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/']))); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => e.respondWith(fetch(e.request, {cache:'no-store'}).catch(() => caches.match(e.request))));
+self.addEventListener('message', e => { if(e.data==='SKIP_WAITING') self.skipWaiting(); });
