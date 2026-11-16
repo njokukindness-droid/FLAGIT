@@ -210,6 +210,7 @@ button{cursor:pointer}
     <button id="nav-dashboard" onclick="setView('dashboard')">Dashboard</button>
     <button id="nav-notifications" onclick="setView('notifications')">Alerts</button>
     <button id="nav-members" onclick="setView('members')">Team</button>
+    <button id="nav-reportsettings" onclick="setView('reportsettings')" style="display:none">Reports</button>
   </div>
 </div>
 
@@ -618,6 +619,9 @@ function renderTopBar(){
   if(myProjects.length>1){ pill.style.cursor='pointer'; pill.onclick=toggleProjectSwitcher; pill.title='Click to switch project'; pill.innerHTML=`${esc(currentProject?.name||'No project')} ▾`; }
   // Show/hide Team tab based on role
   document.getElementById('nav-members').style.display='flex';
+  // Show Reports tab for admins only
+  const rsTab=document.getElementById('nav-reportsettings');
+  if(rsTab) rsTab.style.display=isAdmin()?'flex':'none';
   // Update company logo in top bar
   const logoImg=document.getElementById('top-project-logo');
   if(logoImg){
@@ -652,7 +656,7 @@ async function loadNotifications(){
 
 function setView(v){
   currentView=v;
-  ['feed','dashboard','notifications','members'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
+  ['feed','dashboard','notifications','members','reportsettings'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
   selectedObservation=null;
   document.getElementById('fab-btn').style.display=v==='feed'?'flex':'none';
   renderContent();
@@ -664,6 +668,7 @@ function renderContent(){
   if(currentView==='dashboard') return renderDashboard(c);
   if(currentView==='notifications') return renderNotifications(c);
   if(currentView==='members') return renderMembers(c);
+  if(currentView==='reportsettings') return renderReportSettings(c);
   renderFeed(c);
 }
 
@@ -1381,6 +1386,9 @@ async function generateDailyReport(dateStr){
   showProgress(`Preparing PDF… downloading photos (0/${totalPhotos})`);
   let photoDone=0;
 
+  // Load signatures
+  const sigs=await _loadSigs();
+
   // Pre-fetch all photos as base64 using storage download (bypasses CORS/signed URL issues)
   async function photoToBase64(filePath){
     try{
@@ -1470,17 +1478,27 @@ async function generateDailyReport(dateStr){
       doc.text(h,hx+1,y+3.5);
     });
     y+=5;
-    const roleRows=[{role:'Submitted to',name:'HSE Manager',title:'HSE Manager',company:orgName},{role:'Prepared by',name:preparedBy,title:'HSE Officer',company:orgName}];
+    const roleRows=[
+      {role:'Submitted to',name:'Abass Afolabi',title:'HSE Manager',company:orgName,sigKey:'sig_submitted_to'},
+      {role:'Prepared by',name:preparedBy,title:'HSE Officer',company:orgName,sigKey:'sig_prepared_by'}
+    ];
+    const sigRowH=10;
     roleRows.forEach(row=>{
       const vals=[row.role,row.title,row.name,row.company,'',displayDate];
       vals.forEach((v,i)=>{
         const hx=margin+colWidths.slice(0,i).reduce((a,b)=>a+b,0);
-        doc.setFillColor(252,253,255); doc.rect(hx,y,colWidths[i],6,'F');
-        doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],6,'S');
+        doc.setFillColor(252,253,255); doc.rect(hx,y,colWidths[i],sigRowH,'F');
+        doc.setDrawColor(180,190,210); doc.rect(hx,y,colWidths[i],sigRowH,'S');
         doc.setTextColor(30,30,30); doc.setFontSize(7); doc.setFont('helvetica','normal');
-        doc.text(String(v),hx+1,y+4);
+        if(i!==4) doc.text(String(v),hx+1,y+5);
       });
-      y+=6;
+      // Embed signature image in Signature column (index 4)
+      const sigX=margin+colWidths.slice(0,4).reduce((a,b)=>a+b,0);
+      const sigData=sigs[row.sigKey];
+      if(sigData){
+        try{ doc.addImage(sigData,'PNG',sigX+1,y+1,colWidths[4]-2,sigRowH-2); }catch(e){}
+      }
+      y+=sigRowH;
     });
     y+=4;
 
@@ -1637,6 +1655,119 @@ function addTableFooter(doc,W,H,margin){
   // Close bottom border of last row — nothing extra needed; footer added per page
 }
 
+// ── REPORT SETTINGS ───────────────────────────────────────────
+let _sigPadActive=null; // tracks which canvas is being drawn on
+
+async function renderReportSettings(c){
+  if(!isAdmin()){ c.innerHTML=`<div class="card">Only admins can manage report settings.</div>`; return; }
+  c.innerHTML=`<div class="card" style="margin-bottom:14px"><div style="font-size:15px;font-weight:700;margin-bottom:4px">Report Settings</div><div style="font-size:13px;color:var(--text2)">Configure signatures that appear on every observation report.</div></div><div id="rs-loading" style="text-align:center;padding:32px;color:var(--text2)">Loading…</div>`;
+
+  // Load existing signatures from project_settings
+  const {data:rows}=await db.from('project_settings')
+    .select('key,value')
+    .eq('project_id',currentProject.id)
+    .in('key',['sig_prepared_by','sig_submitted_to']);
+  const existing={};
+  (rows||[]).forEach(r=>{ existing[r.key]=r.value; });
+
+  const sigHtml=(key,label,name,title)=>`
+    <div class="card" style="margin-bottom:14px" id="sig-card-${key}">
+      <div style="font-weight:700;margin-bottom:4px">${label}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">${name} · ${title}</div>
+      ${existing[key]?`<div style="margin-bottom:10px;padding:8px;background:#fff;border:1px solid var(--border);border-radius:8px;text-align:center"><img src="${existing[key]}" style="max-height:60px;max-width:220px;object-fit:contain" alt="Saved signature" /></div><div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Signature saved</div>`:'<div style="font-size:12px;color:var(--text2);margin-bottom:10px">No signature saved yet.</div>'}
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Draw signature</div>
+      <canvas id="sig-canvas-${key}" width="400" height="120"
+        style="border:1.5px solid var(--border);border-radius:8px;background:#fff;width:100%;max-width:400px;touch-action:none;display:block;cursor:crosshair"></canvas>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-brand" style="padding:8px 14px;font-size:13px" onclick="saveSigPad('${key}')">Save drawn signature</button>
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="clearSigPad('${key}')">Clear</button>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin:12px 0 8px">— or upload image —</div>
+      <label class="btn btn-ghost" style="padding:8px 14px;font-size:13px;cursor:pointer">
+        Upload signature image
+        <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadSigFile(this,'${key}')" />
+      </label>
+      <div id="sig-msg-${key}" style="margin-top:8px;font-size:13px"></div>
+    </div>`;
+
+  document.getElementById('rs-loading').outerHTML=
+    sigHtml('sig_prepared_by','Prepared by signature','Kindness Njoku','HSE Engineer')+
+    sigHtml('sig_submitted_to','Submitted to signature','Abass Afolabi','HSE Manager');
+
+  // Wire up signature pads
+  ['sig_prepared_by','sig_submitted_to'].forEach(key=>initSigPad(key));
+}
+
+function initSigPad(key){
+  const canvas=document.getElementById(`sig-canvas-${key}`);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  let drawing=false, lastX=0, lastY=0;
+
+  function getPos(e){
+    const r=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/r.width, scaleY=canvas.height/r.height;
+    const src=e.touches?e.touches[0]:e;
+    return [(src.clientX-r.left)*scaleX,(src.clientY-r.top)*scaleY];
+  }
+  function start(e){ e.preventDefault(); drawing=true; [lastX,lastY]=getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); }
+  function move(e){ e.preventDefault(); if(!drawing) return; const [x,y]=getPos(e); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#1a1a2e'; ctx.lineTo(x,y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x,y); lastX=x; lastY=y; }
+  function stop(){ drawing=false; }
+
+  canvas.addEventListener('mousedown',start); canvas.addEventListener('mousemove',move); canvas.addEventListener('mouseup',stop); canvas.addEventListener('mouseleave',stop);
+  canvas.addEventListener('touchstart',start,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',stop);
+}
+
+function clearSigPad(key){
+  const canvas=document.getElementById(`sig-canvas-${key}`);
+  if(!canvas) return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+}
+
+async function saveSigPad(key){
+  const canvas=document.getElementById(`sig-canvas-${key}`);
+  if(!canvas) return;
+  // Check canvas is not blank
+  const data=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+  if(!data.some(v=>v!==0)){ document.getElementById(`sig-msg-${key}`).innerHTML=`<span style="color:var(--red)">Canvas is empty — please draw your signature first.</span>`; return; }
+  const dataUrl=canvas.toDataURL('image/png');
+  await _saveSigToDb(key,dataUrl);
+}
+
+async function uploadSigFile(input,key){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async e=>{ await _saveSigToDb(key,e.target.result); };
+  reader.readAsDataURL(file);
+}
+
+async function _saveSigToDb(key,dataUrl){
+  const msgEl=document.getElementById(`sig-msg-${key}`);
+  if(msgEl) msgEl.innerHTML=`<span style="color:var(--text2)">Saving…</span>`;
+  try{
+    const {error}=await db.from('project_settings').upsert(
+      {project_id:currentProject.id,key,value:dataUrl},
+      {onConflict:'project_id,key'}
+    );
+    if(error) throw error;
+    if(msgEl) msgEl.innerHTML=`<span style="color:var(--green)">✓ Signature saved successfully.</span>`;
+    // Refresh the card to show the saved preview
+    setTimeout(()=>renderReportSettings(document.getElementById('main-content')),800);
+  }catch(err){
+    if(msgEl) msgEl.innerHTML=`<span style="color:var(--red)">Error: ${err.message}</span>`;
+  }
+}
+
+async function _loadSigs(){
+  const {data}=await db.from('project_settings')
+    .select('key,value')
+    .eq('project_id',currentProject.id)
+    .in('key',['sig_prepared_by','sig_submitted_to']);
+  const out={};
+  (data||[]).forEach(r=>{ out[r.key]=r.value; });
+  return out;
+}
+
 // ── PROGRESS TOAST ────────────────────────────────────────────
 function showProgress(msg){
   let el=document.getElementById('_gen-progress');
@@ -1726,6 +1857,27 @@ async function generateDailyReportDocx(dateStr){
     }catch(e){ return dataCell('No photo',w,{center:true}); }
   }
 
+  // Helper for signature cell (smaller image, transparent background)
+  function sigImgCell(b64,w){
+    if(!b64) return dataCell('',w,{center:true});
+    try{
+      const mimeMatch=b64.match(/^data:(image\/\w+);base64,/);
+      const imgType=(mimeMatch&&mimeMatch[1].includes('png'))?'png':'jpg';
+      const base64Data=b64.split(',')[1];
+      const binaryStr=atob(base64Data);
+      const bytes=new Uint8Array(binaryStr.length);
+      for(let i=0;i<binaryStr.length;i++) bytes[i]=binaryStr.charCodeAt(i);
+      return new TableCell({
+        width:{size:w,type:WidthType.DXA},
+        verticalAlign:VerticalAlign.CENTER,
+        children:[new Paragraph({
+          alignment:AlignmentType.CENTER,
+          children:[new ImageRun({data:bytes,type:imgType,transformation:{width:100,height:40}})]
+        })]
+      });
+    }catch(e){ return dataCell('',w,{center:true}); }
+  }
+
   // Download all photos
   async function photoToBase64(filePath){
     try{
@@ -1754,6 +1906,9 @@ async function generateDailyReportDocx(dateStr){
     };
   }
   showProgress('Building Word document…');
+
+  // Load signatures
+  const sigs=await _loadSigs();
 
   // Fetch logo
   const {data:projData}=await db.from('projects').select('logo_url').eq('id',currentProject.id).single();
@@ -1808,12 +1963,12 @@ async function generateDailyReportDocx(dateStr){
       new TableRow({children:[
         dataCell('Submitted to',roleCw[0]),dataCell('HSE Manager',roleCw[1]),
         dataCell('Abass Afolabi',roleCw[2]),dataCell(orgName,roleCw[3]),
-        dataCell('',roleCw[4]),dataCell(displayDate,roleCw[5])
+        sigImgCell(sigs['sig_submitted_to'],roleCw[4]),dataCell(displayDate,roleCw[5])
       ]}),
       new TableRow({children:[
         dataCell('Prepared by',roleCw[0]),dataCell('HSE Officer',roleCw[1]),
         dataCell(preparedBy,roleCw[2]),dataCell(orgName,roleCw[3]),
-        dataCell('',roleCw[4]),dataCell(displayDate,roleCw[5])
+        sigImgCell(sigs['sig_prepared_by'],roleCw[4]),dataCell(displayDate,roleCw[5])
       ]})
     ]
   });
