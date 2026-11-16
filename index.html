@@ -1377,6 +1377,10 @@ async function generateDailyReport(dateStr){
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
 
+  const totalPhotos=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr).reduce((n,o)=>n+(o.observation_photos||[]).length,0);
+  showProgress(`Preparing PDF… downloading photos (0/${totalPhotos})`);
+  let photoDone=0;
+
   // Pre-fetch all photos as base64 using storage download (bypasses CORS/signed URL issues)
   async function photoToBase64(filePath){
     try{
@@ -1394,12 +1398,17 @@ async function generateDailyReport(dateStr){
   const obsPhotosMap={};
   for(const obs of dayObs){
     const photos=obs.observation_photos||[];
-    const b64s=await Promise.all(photos.map(p=>photoToBase64(p.file_path)));
+    const b64s=await Promise.all(photos.map(async p=>{
+      const r=await photoToBase64(p.file_path);
+      photoDone++; showProgress(`Preparing PDF… downloading photos (${photoDone}/${totalPhotos})`);
+      return r;
+    }));
     obsPhotosMap[obs.id]={
       initial: b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
       closeout: b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
     };
   }
+  showProgress('Building PDF…');
 
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const W=297,H=210,margin=10,contentW=W-margin*2;
@@ -1620,11 +1629,37 @@ async function generateDailyReport(dateStr){
     doc.text(`Page ${i} of ${pages}`,W/2,H-3.5,{align:'center'});
     doc.text(`FLAGIT HSE Observation Platform | ${displayDate}`,W-margin,H-3.5,{align:'right'});
   }
+  hideProgress();
   doc.save(`HSE_Observation_Report_${dateStr}.pdf`);
 }
 
 function addTableFooter(doc,W,H,margin){
   // Close bottom border of last row — nothing extra needed; footer added per page
+}
+
+// ── PROGRESS TOAST ────────────────────────────────────────────
+function showProgress(msg){
+  let el=document.getElementById('_gen-progress');
+  if(!el){
+    el=document.createElement('div');
+    el.id='_gen-progress';
+    el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#00467F;color:#fff;padding:12px 22px;border-radius:10px;font-size:14px;font-family:Arial,sans-serif;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.35);min-width:260px;max-width:90vw;';
+    const spinner=document.createElement('div');
+    spinner.style.cssText='width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;flex-shrink:0;animation:_spin 0.7s linear infinite;';
+    spinner.id='_gen-spinner';
+    const style=document.createElement('style');
+    style.textContent='@keyframes _spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+    el.appendChild(spinner);
+    const txt=document.createElement('span');
+    txt.id='_gen-progress-txt';
+    el.appendChild(txt);
+    document.body.appendChild(el);
+  }
+  document.getElementById('_gen-progress-txt').textContent=msg;
+}
+function hideProgress(){
+  document.getElementById('_gen-progress')?.remove();
 }
 
 // ── WORD (.docx) DAILY REPORT ─────────────────────────────────
@@ -1633,6 +1668,10 @@ async function generateDailyReportDocx(dateStr){
   if(!dateStr){ alert('Please select a date'); return; }
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
+
+  const totalPhotos=dayObs.reduce((n,o)=>n+(o.observation_photos||[]).length,0);
+  showProgress(`Preparing Word doc… downloading photos (0/${totalPhotos})`);
+  let photoDone=0;
 
   const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,ImageRun,
     AlignmentType,WidthType,BorderStyle,ShadingType,HeadingLevel,
@@ -1704,12 +1743,17 @@ async function generateDailyReportDocx(dateStr){
   const obsPhotosMap={};
   for(const obs of dayObs){
     const photos=obs.observation_photos||[];
-    const b64s=await Promise.all(photos.map(p=>photoToBase64(p.file_path)));
+    const b64s=await Promise.all(photos.map(async p=>{
+      const r=await photoToBase64(p.file_path);
+      photoDone++; showProgress(`Preparing Word doc… downloading photos (${photoDone}/${totalPhotos})`);
+      return r;
+    }));
     obsPhotosMap[obs.id]={
       initial:b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
       closeout:b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
     };
   }
+  showProgress('Building Word document…');
 
   // Fetch logo
   const {data:projData}=await db.from('projects').select('logo_url').eq('id',currentProject.id).single();
@@ -1900,7 +1944,9 @@ async function generateDailyReportDocx(dateStr){
     }]
   });
 
+  showProgress('Finalising Word document…');
   const blob=await Packer.toBlob(doc);
+  hideProgress();
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
