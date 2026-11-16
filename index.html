@@ -1878,33 +1878,51 @@ async function generateDailyReportDocx(dateStr){
     }catch(e){ return dataCell('',w,{center:true}); }
   }
 
-  // Download all photos
-  async function photoToBase64(filePath){
+  // Download a photo and return a small thumbnail base64 (150×120 max)
+  async function photoToThumbnail(filePath){
     try{
       const {data,error}=await db.storage.from(STORAGE_BUCKET).download(filePath);
       if(error||!data) return null;
-      return await new Promise((resolve,reject)=>{
+      const fullB64=await new Promise((resolve,reject)=>{
         const reader=new FileReader();
         reader.onloadend=()=>resolve(reader.result);
         reader.onerror=reject;
         reader.readAsDataURL(data);
       });
+      // Downscale to thumbnail using canvas
+      return await new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{
+          const maxW=150,maxH=120;
+          const scale=Math.min(maxW/img.width,maxH/img.height,1);
+          const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+          const cv=document.createElement('canvas');
+          cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          resolve(cv.toDataURL('image/jpeg',0.82));
+        };
+        img.onerror=()=>resolve(fullB64);
+        img.src=fullB64;
+      });
     }catch(e){ return null; }
   }
 
+  // Download ALL photos in parallel across all observations
+  const allPhotos=dayObs.flatMap(obs=>(obs.observation_photos||[]).map(p=>({obsId:obs.id,p})));
+  const allResults=await Promise.all(allPhotos.map(async ({obsId,p})=>{
+    const thumb=await photoToThumbnail(p.file_path);
+    photoDone++; showProgress(`Downloading photos (${photoDone}/${totalPhotos})`);
+    return {obsId,fileName:p.file_name,thumb};
+  }));
+
   const obsPhotosMap={};
-  for(const obs of dayObs){
-    const photos=obs.observation_photos||[];
-    const b64s=await Promise.all(photos.map(async p=>{
-      const r=await photoToBase64(p.file_path);
-      photoDone++; showProgress(`Preparing Word doc… downloading photos (${photoDone}/${totalPhotos})`);
-      return r;
-    }));
-    obsPhotosMap[obs.id]={
-      initial:b64s.filter((_,i)=>!photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean),
-      closeout:b64s.filter((_,i)=>photos[i]?.file_name?.startsWith('CLOSEOUT_')).filter(Boolean)
-    };
-  }
+  allResults.forEach(({obsId,fileName,thumb})=>{
+    if(!obsPhotosMap[obsId]) obsPhotosMap[obsId]={initial:[],closeout:[]};
+    if(thumb){
+      if(fileName?.startsWith('CLOSEOUT_')) obsPhotosMap[obsId].closeout.push(thumb);
+      else obsPhotosMap[obsId].initial.push(thumb);
+    }
+  });
   showProgress('Building Word document…');
 
   // Load signatures
