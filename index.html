@@ -341,7 +341,7 @@ button{cursor:pointer}
 const SUPABASE_URL = 'https://ighaahpdqkexayeleczd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HwEY1zGWH0g0FFhNQ-185g_C71Q_KET';
 const STORAGE_BUCKET = 'observation-photos';
-// Gemini key — cached in memory after first fetch, never in localStorage or HTML
+// Groq key — cached in memory after first fetch, never in localStorage or HTML
 let _geminiKeyCache = null;
 async function getGeminiKey(){
   if(_geminiKeyCache) return _geminiKeyCache;
@@ -352,8 +352,8 @@ async function getGeminiKey(){
   return '';
 }
 
-function getGeminiUrl(key){
-  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(key)}`;
+function getGroqUrl(){
+  return 'https://api.groq.com/openai/v1/chat/completions';
 }
 
 async function saveGeminiKey(){
@@ -809,8 +809,8 @@ async function renderMembers(c){
       const {data:aiRow}=await db.from('project_settings').select('value').eq('project_id',currentProject.id).eq('key','gemini_api_key').maybeSingle();
       const hasKey=!!(aiRow?.value);
       html+=`<div class="card" style="margin-bottom:14px">
-        <div style="font-weight:700;margin-bottom:8px">Ask Flagit AI — Gemini API Key</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">The AI recommendation feature uses Google Gemini. Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--brand)">aistudio.google.com</a> → Get API key.</div>
+        <div style="font-weight:700;margin-bottom:8px">Ask Flagit AI — Groq API Key</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">The AI recommendation feature uses Groq (Llama 3.3 70B). Get a free key at <a href="https://console.groq.com" target="_blank" style="color:var(--brand)">console.groq.com</a> → API Keys.</div>
         ${hasKey?'<div style="font-size:13px;color:#1a6b2a;margin-bottom:10px">✓ API key is set</div>':'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">No key set — Ask Flagit AI is disabled.</div>'}
         <div id="ai-key-err" class="error-box" style="display:none"></div>
         <div id="ai-key-ok" class="success-box" style="display:none"></div>
@@ -1284,20 +1284,22 @@ async function askFlagitAI(){
   try{
     const controller = new AbortController();
     const aiTimeout = setTimeout(() => controller.abort(), 30000);
-    const res = await fetch(getGeminiUrl(key), {
+    const res = await fetch(getGroqUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       signal: controller.signal,
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text:
-`UAE HSE adviser. Observation on a construction site:
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 300,
+        messages: [
+          { role: 'system', content: 'You are a UAE HSE adviser for construction sites. Give concise, regulation-backed corrective actions.' },
+          { role: 'user', content:
+`Observation on a construction site:
 Category: ${cat}, Severity: ${sev}, Location: ${loc}
 "${desc}"
 Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai Municipality TG series, OSHAD-SF CoP, UAE Labour Law, or ISO standard). Format: "1. Action — Ref". No intro, no conclusion. Max 80 words.`
-          }]
-        }]
+          }
+        ]
       })
     });
     clearTimeout(aiTimeout);
@@ -1308,7 +1310,7 @@ Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai 
       throw new Error(data?.error?.message || 'AI request failed.');
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text = data?.choices?.[0]?.message?.content?.trim();
 
     if(!text){
       throw new Error('No response from FLAGIT AI.');
@@ -1316,7 +1318,7 @@ Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai 
 
     recEl.value = text;
   }catch(err){
-    const msg = err.name==='AbortError' ? 'AI timed out (15s). Check your internet and try again.' : (err.message || 'Could not reach FLAGIT AI. Please type manually.');
+    const msg = err.name==='AbortError' ? 'AI timed out (30s). Check your internet and try again.' : (err.message || 'Could not reach FLAGIT AI. Please type manually.');
     showAIErr(msg);
   }finally{
     btn.disabled = false;
