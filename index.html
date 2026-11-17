@@ -1283,7 +1283,7 @@ async function askFlagitAI(){
 
   try{
     const controller = new AbortController();
-    const aiTimeout = setTimeout(() => controller.abort(), 15000);
+    const aiTimeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(getGeminiUrl(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
