@@ -1438,7 +1438,8 @@ async function generateDailyReport(dateStr){
   const W=297,H=210,margin=10,contentW=W-margin*2;
   const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
-  const preparedBy=(currentProject.full_name||currentUser.user_metadata?.full_name||'').replace(/@.*$/,'').trim()||'Kindness Njoku';
+  const _rawName=(currentProject.full_name||currentUser.user_metadata?.full_name||'');
+  const preparedBy=_rawName.includes('@')||_rawName.includes('.')?'Kindness Njoku':_rawName.trim()||'Kindness Njoku';
   const projName=currentProject.name||'';
   const projLocation=currentProject.location||dayObs[0]?.location||'Site';
 
@@ -1847,7 +1848,8 @@ async function generatePrintReport(dateStr){
 
   const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
-  const preparedBy=(currentProject.full_name||currentUser.user_metadata?.full_name||'').replace(/@.*$/,'').trim()||'Kindness Njoku';
+  const _rawName=(currentProject.full_name||currentUser.user_metadata?.full_name||'');
+  const preparedBy=_rawName.includes('@')||_rawName.includes('.')?'Kindness Njoku':_rawName.trim()||'Kindness Njoku';
   const projName=currentProject.name||'';
   const projLocation=currentProject.location||dayObs[0]?.location||'Site';
 
@@ -2137,7 +2139,8 @@ async function generateDailyReportDocx(dateStr){
 
   const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
-  const preparedBy=(currentProject.full_name||currentUser.user_metadata?.full_name||'').replace(/@.*$/,'').trim()||'Kindness Njoku';
+  const _rawName=(currentProject.full_name||currentUser.user_metadata?.full_name||'');
+  const preparedBy=_rawName.includes('@')||_rawName.includes('.')?'Kindness Njoku':_rawName.trim()||'Kindness Njoku';
   const projName=currentProject.name||'';
   const projLocation=currentProject.location||dayObs[0]?.location||'Site';
 
