@@ -1775,6 +1775,12 @@ async function generatePrintReport(dateStr){
   const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
   if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
 
+  // Open the tab IMMEDIATELY (synchronously, before any async work) so Chrome
+  // doesn't treat it as a pop-up. We'll write content into it once ready.
+  const win=window.open('','_blank');
+  if(!win){ alert('Please allow pop-ups for getflagit.com in your browser, then try again.'); return; }
+  win.document.write('<html><head><title>Preparing report…</title></head><body style="font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f7fa"><p style="font-size:16px;color:#00467F">⏳ Preparing your report, please wait…</p></body></html>');
+
   const totalPhotos=dayObs.reduce((n,o)=>n+(o.observation_photos||[]).length,0);
   showProgress(`Preparing report… (0/${totalPhotos} photos)`);
   let photoDone=0;
@@ -1937,9 +1943,9 @@ async function generatePrintReport(dateStr){
   </body></html>`;
 
   hideProgress();
-  const win=window.open('','_blank');
-  if(win){ win.document.write(html); win.document.close(); }
-  else{ alert('Please allow pop-ups for this site, then try again.'); }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 // ── PROGRESS TOAST ────────────────────────────────────────────
