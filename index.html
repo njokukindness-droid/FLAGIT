@@ -1282,6 +1282,20 @@ async function askFlagitAI(){
   errEl.style.display = 'none';
 
   try{
+    // Auto-detect a working Groq chat model so hardcoded names never break
+    let groqModel = 'llama-4-scout-17b-16e-instruct'; // fallback
+    try{
+      const mres = await fetch('https://api.groq.com/openai/v1/models', {
+        headers:{ 'Authorization': `Bearer ${key}` }
+      });
+      if(mres.ok){
+        const mdata = await mres.json();
+        const SKIP = /guard|embed|whisper|tts|vision|tool|distil|safeguard/i;
+        const pick = (mdata.data||[]).find(m => m.id && !SKIP.test(m.id));
+        if(pick) groqModel = pick.id;
+      }
+    }catch(_){}
+
     const controller = new AbortController();
     const aiTimeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(getGroqUrl(), {
@@ -1289,7 +1303,7 @@ async function askFlagitAI(){
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       signal: controller.signal,
       body: JSON.stringify({
-        model: 'llama-4-scout-17b-16e-instruct',
+        model: groqModel,
         max_tokens: 300,
         messages: [
           { role: 'system', content: 'You are a UAE HSE adviser for construction sites. Give concise, regulation-backed corrective actions.' },
