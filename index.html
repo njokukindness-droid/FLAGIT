@@ -1894,6 +1894,7 @@ async function generatePrintReport(dateStr){
     .meta-table td{padding:4px 6px;border:1px solid #b0b8c8;font-size:11px}
     .obs-table{width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:fixed}
     .obs-table th{background:#00467F;color:#fff;padding:5px 4px;font-size:10px;text-align:center;border:1px solid #003a6b}
+    thead{display:table-row-group} /* prevent browser repeating thead on each printed page */
     .obs-table td{padding:4px;border:1px solid #c8d4e8;vertical-align:middle;word-wrap:break-word;font-size:10px}
     .obs-table tr:nth-child(even) td{background:#f5f8ff}
     .hazard-ref{font-size:9px;color:#444;border:1px solid #dce6f2;padding:5px 8px;border-radius:4px;margin-bottom:8px;line-height:1.7}
