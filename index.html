@@ -1575,22 +1575,17 @@ async function generateDailyReport(dateStr){
     // Row height: taller if photos present so they fit nicely
     const hasInitial=photos.initial.length>0;
     const hasCloseout=photos.closeout.length>0;
-    const rowH=hasInitial||hasCloseout?42:16;
+    // Row height: fit text — count lines in the two longest columns
+    const descLines=doc.splitTextToSize(obs.description||'',colDefs[3].w-2).length;
+    const recLines=doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).length;
+    const textRowH=Math.max(descLines,recLines)*3.8+4;
+    const rowH=Math.max(hasInitial||hasCloseout?42:16, textRowH);
 
     if(y+rowH>H-14){
       addTableFooter(doc,W,H,margin);
       doc.addPage();
       y=addPageHeader(doc,doc.internal.getNumberOfPages());
-      let hx2=margin;
-      colDefs.forEach(col=>{
-        doc.setFillColor(0,70,127); doc.rect(hx2,y,col.w,8,'F');
-        doc.setTextColor(255,255,255); doc.setFontSize(5.5); doc.setFont('helvetica','bold');
-        const lines=col.h.split('\n');
-        if(lines.length>1){ doc.text(lines[0],hx2+col.w/2,y+2.8,{align:'center'}); doc.text(lines[1],hx2+col.w/2,y+5.8,{align:'center'}); }
-        else { doc.text(col.h,hx2+col.w/2,y+4.5,{align:'center'}); }
-        hx2+=col.w;
-      });
-      y+=8;
+      // No table header repeat on continuation pages — observations just continue
     }
 
     const bg=idx%2===0?[249,251,255]:[255,255,255];
@@ -1601,8 +1596,8 @@ async function generateDailyReport(dateStr){
       String(idx+1),
       null, // photo initial — handled below
       obs.hazard_codes||'-',
-      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).slice(0,5).join('\n'),
-      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).slice(0,5).join('\n'),
+      doc.splitTextToSize(obs.description||'',colDefs[3].w-2).join('\n'),
+      doc.splitTextToSize(obs.recommendation||'-',colDefs[4].w-2).join('\n'),
       obs.responsible_person||'-',
       obs.risk_level||obs.severity||'-',
       obs.timeframe||'-',
