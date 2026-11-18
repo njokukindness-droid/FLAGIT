@@ -1161,12 +1161,24 @@ async function deleteObservation(id){
   if(!isAdmin()) return alert('Only admins can delete observations.');
   if(!confirm('Delete this observation permanently? This cannot be undone.')) return;
   try{
+    // Delete linked photos from storage + DB first (avoids FK constraint blocking observation delete)
+    const {data:photos}=await db.from('observation_photos').select('id,file_path').eq('observation_id',id);
+    if(photos && photos.length){
+      const paths=photos.map(p=>p.file_path).filter(Boolean);
+      if(paths.length) await db.storage.from(STORAGE_BUCKET).remove(paths);
+      const {error:phErr}=await db.from('observation_photos').delete().eq('observation_id',id);
+      if(phErr) console.warn('Photo row delete error:', phErr.message);
+    }
     const {error}=await db.from('observations').delete().eq('id',id);
     if(error) throw error;
     selectedObservation=null;
     await refreshAll();
     renderContent();
-  }catch(err){ alert(err.message||'Could not delete observation.'); }
+    showToast('🗑️ Observation deleted.');
+  }catch(err){
+    console.error('deleteObservation error:', err);
+    alert('Could not delete: ' + (err.message||JSON.stringify(err)));
+  }
 }
 
 // ── PHOTOS ───────────────────────────────────────────
