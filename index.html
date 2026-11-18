@@ -211,6 +211,9 @@ button{cursor:pointer}
     <button id="nav-notifications" onclick="setView('notifications')">Alerts</button>
     <button id="nav-members" onclick="setView('members')">Team</button>
     <button id="nav-reportsettings" onclick="setView('reportsettings')" style="display:none">Reports</button>
+    <button id="nav-sync" onclick="syncOfflineObservations()" title="Sync offline observations" style="position:relative;display:none">
+      📶 <span id="offline-sync-badge" style="display:none;position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;"></span>
+    </button>
   </div>
 </div>
 
@@ -355,6 +358,127 @@ async function getGeminiKey(){
 function getGroqUrl(){
   return 'https://api.groq.com/openai/v1/chat/completions';
 }
+
+// ── OFFLINE QUEUE (IndexedDB) ────────────────────────
+const OFFLINE_DB_NAME = 'flagit_offline';
+const OFFLINE_DB_VER  = 1;
+let _offlineDB = null;
+
+function openOfflineDB(){
+  return new Promise((resolve, reject) => {
+    if(_offlineDB){ resolve(_offlineDB); return; }
+    const req = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VER);
+    req.onupgradeneeded = e => {
+      const idb = e.target.result;
+      if(!idb.objectStoreNames.contains('pending_obs')){
+        const store = idb.createObjectStore('pending_obs', { keyPath: '_localId' });
+        store.createIndex('by_synced', '_synced', { unique: false });
+      }
+    };
+    req.onsuccess = e => { _offlineDB = e.target.result; resolve(_offlineDB); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function queueObservationOffline(payload, photos){
+  const idb = await openOfflineDB();
+  const localId = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  // Serialise photos as base64 so they survive storage
+  const serialisedPhotos = await Promise.all((photos||[]).map(async f => {
+    return new Promise((res) => {
+      const reader = new FileReader();
+      reader.onload = e => res({ name: f.name, type: f.type, data: e.target.result });
+      reader.readAsDataURL(f);
+    });
+  }));
+  const record = { ...payload, _localId: localId, _synced: false, _photos: serialisedPhotos, _queuedAt: new Date().toISOString() };
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction('pending_obs', 'readwrite');
+    tx.objectStore('pending_obs').put(record);
+    tx.oncomplete = () => resolve(localId);
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+async function getPendingOfflineObs(){
+  const idb = await openOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction('pending_obs', 'readonly');
+    const req = tx.objectStore('pending_obs').index('by_synced').getAll(false);
+    req.onsuccess = e => resolve(e.target.result || []);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function markOfflineObsSynced(localId){
+  const idb = await openOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction('pending_obs', 'readwrite');
+    const store = tx.objectStore('pending_obs');
+    const req = store.get(localId);
+    req.onsuccess = e => {
+      const rec = e.target.result;
+      if(rec){ rec._synced = true; store.put(rec); }
+    };
+    tx.oncomplete = resolve;
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+async function syncOfflineObservations(){
+  if(!currentUser || !currentProject) return;
+  let pending;
+  try { pending = await getPendingOfflineObs(); } catch(_){ return; }
+  if(!pending.length) return;
+  let synced = 0;
+  for(const rec of pending){
+    try{
+      const { _localId, _synced, _photos, _queuedAt, ...payload } = rec;
+      const ncrRef = payload.is_ncr ? `NCR-${Date.now().toString().slice(-6)}` : null;
+      const { data, error } = await db.from('observations').insert({ ...payload, status:'Open', ncr_ref: ncrRef }).select('id').single();
+      if(error) throw error;
+      const obsId = data.id;
+      // Upload queued photos
+      for(const ph of (_photos||[])){
+        const blob = await fetch(ph.data).then(r => r.blob());
+        const safe = ph.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path = `${currentProject.id}/${obsId}/${Date.now()}_${safe}`;
+        const up = await db.storage.from(STORAGE_BUCKET).upload(path, blob, { upsert:false, contentType: ph.type||'image/jpeg' });
+        if(up.error) throw up.error;
+        await db.from('observation_photos').insert({ project_id: currentProject.id, observation_id: obsId, file_path: path, file_name: ph.name, created_by: currentUser.id });
+      }
+      await markOfflineObsSynced(_localId);
+      synced++;
+    }catch(_){ /* leave for next sync attempt */ }
+  }
+  if(synced > 0){
+    showToast(`✅ ${synced} offline observation${synced>1?'s':''} synced successfully.`);
+    await refreshAll();
+    renderContent();
+    updateOfflineBadge();
+  }
+}
+
+async function updateOfflineBadge(){
+  try{
+    const pending = await getPendingOfflineObs();
+    const badge = document.getElementById('offline-sync-badge');
+    if(!badge) return;
+    if(pending.length > 0){
+      badge.textContent = pending.length;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }catch(_){}
+}
+
+// Auto-sync when network returns
+window.addEventListener('online', () => {
+  showToast('🌐 Back online — syncing offline observations…');
+  syncOfflineObservations();
+});
+// ── END OFFLINE QUEUE ────────────────────────────────
 
 async function saveGeminiKey(){
   const val=document.getElementById('ai-key-input')?.value?.trim();
@@ -564,6 +688,11 @@ async function enterProject(){
   showApp();
   await refreshAll();
   attachRealtime(); await startPresence();
+  // Show sync button and check for pending offline observations
+  const syncBtn = document.getElementById('nav-sync');
+  if(syncBtn) syncBtn.style.display = '';
+  updateOfflineBadge();
+  if(navigator.onLine) syncOfflineObservations();
 }
 
 async function getOrCreateProject(projectName,allowCreate){
@@ -1091,6 +1220,18 @@ async function saveObservation(){
   if(!payload.location||!payload.description) return showError('obs-err','Location and description are required.');
   const btn=document.getElementById('save-obs-btn');
   btn.disabled=true; btn.textContent='Saving...';
+  // ── OFFLINE PATH ──
+  if(!navigator.onLine && !editingObservationId){
+    try{
+      await queueObservationOffline(payload, obsPhotos);
+      obsPhotos=[]; closeModal();
+      updateOfflineBadge();
+      showToast('📶 No connection — observation saved offline and will sync automatically when you\'re back online.');
+    }catch(err){ showError('obs-err','Could not save offline: ' + (err.message||err)); }
+    finally{ btn.disabled=false; btn.textContent='Save observation'; }
+    return;
+  }
+  // ── ONLINE PATH ──
   try{
     let obsId=editingObservationId;
     if(editingObservationId){
