@@ -513,6 +513,7 @@ const STATUS_STYLES = {
 
 let db=null, authMode='signin', pendingAuth=null, currentUser=null;
 let myProjects=[], currentProject=null, observations=[], notifications=[];
+let bulkSelectMode=false, bulkSelected=new Set();
 let currentView='feed', selectedObservation=null, realtimeChannels=[];
 let obsPhotos=[], editingObservationId=null;
 let closeoutObsId=null, closeoutPhotos=[];
@@ -813,6 +814,7 @@ function renderFeed(c){
     <div class="metric"><div class="lbl">Critical</div><div class="val">${crit}</div></div>
   </div>
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+    ${isAdmin()?`<button class="btn btn-ghost" id="bulk-select-btn" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="toggleBulkSelect()">☑ Select</button>`:''}
     <button class="btn btn-ghost" style="padding:8px 14px;display:flex;align-items:center;gap:6px" onclick="showDailyReportPicker()">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Daily Report
@@ -823,10 +825,22 @@ function renderFeed(c){
     </button>
   </div>`;
   if(!observations.length) html+=`<div class="card"><div class="small">No observations yet. Tap + to raise the first flag.</div></div>`;
+  if(bulkSelectMode && isAdmin()){
+    html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:var(--surface2);border-radius:8px">
+      <span style="flex:1;font-size:13px;font-weight:600">${bulkSelected.size} selected</span>
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:13px" onclick="bulkSelectAll()">Select All</button>
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:13px" onclick="bulkSelected.clear();renderContent()">Clear</button>
+      <button class="btn btn-red" style="padding:6px 12px;font-size:13px" ${bulkSelected.size===0?'disabled':''} onclick="bulkDeleteObservations()">🗑 Delete ${bulkSelected.size>0?bulkSelected.size+' ':''}</button>
+    </div>`;
+  }
   observations.forEach(o=>{
-    html+=`<div class="obs-card" style="border-left-color:${SEVERITY_STYLES[o.severity]?.border||'#ccc'}" onclick="openObservation('${o.id}')">
+    const checked=bulkSelected.has(o.id);
+    html+=`<div class="obs-card" style="border-left-color:${SEVERITY_STYLES[o.severity]?.border||'#ccc'};${bulkSelectMode&&checked?'outline:2px solid var(--brand);':''}" onclick="${bulkSelectMode?`toggleBulkItem('${o.id}')`:`openObservation('${o.id}')`}">
       <div class="header-row" style="margin-bottom:8px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${badge(o.severity,SEVERITY_STYLES[o.severity]||{})}${badge(o.status,STATUS_STYLES[o.status]||{})}${o.is_ncr?badge('NCR',{bg:'#f0e6ff',text:'#4a1a8a',border:'#c8b3f5'}):''}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${bulkSelectMode?`<input type="checkbox" ${checked?'checked':''} style="width:18px;height:18px;accent-color:var(--brand);flex-shrink:0;cursor:pointer" onclick="event.stopPropagation();toggleBulkItem('${o.id}')">`:''}
+          ${badge(o.severity,SEVERITY_STYLES[o.severity]||{})}${badge(o.status,STATUS_STYLES[o.status]||{})}${o.is_ncr?badge('NCR',{bg:'#f0e6ff',text:'#4a1a8a',border:'#c8b3f5'}):''}
+        </div>
         <div class="small">${formatDate(o.created_at)}</div>
       </div>
       <div style="font-size:15px;font-weight:700;margin-bottom:4px">${esc(o.category)} — ${esc(o.location||'No location')}</div>
@@ -1156,6 +1170,46 @@ async function removeProjectLogo(){
   }catch(err){ alert(err.message||'Could not remove logo.'); }
 }
 
+// ── BULK SELECT ───────────────────────────────────────
+function toggleBulkSelect(){
+  bulkSelectMode=!bulkSelectMode;
+  bulkSelected.clear();
+  renderContent();
+}
+function toggleBulkItem(id){
+  if(bulkSelected.has(id)) bulkSelected.delete(id);
+  else bulkSelected.add(id);
+  renderContent();
+}
+function bulkSelectAll(){
+  observations.forEach(o=>bulkSelected.add(o.id));
+  renderContent();
+}
+async function bulkDeleteObservations(){
+  if(!bulkSelected.size) return;
+  if(!confirm(`Permanently delete ${bulkSelected.size} observation${bulkSelected.size>1?'s':''}? This cannot be undone.`)) return;
+  const ids=[...bulkSelected];
+  let deleted=0, failed=0;
+  for(const id of ids){
+    try{
+      const {data:photos}=await db.from('observation_photos').select('id,file_path').eq('observation_id',id);
+      if(photos?.length){
+        const paths=photos.map(p=>p.file_path).filter(Boolean);
+        if(paths.length) await db.storage.from(STORAGE_BUCKET).remove(paths);
+        await db.from('observation_photos').delete().eq('observation_id',id);
+      }
+      const {error}=await db.from('observations').delete().eq('id',id);
+      if(error) throw error;
+      deleted++;
+    }catch(err){ console.error('bulk delete error for',id,err); failed++; }
+  }
+  bulkSelected.clear();
+  bulkSelectMode=false;
+  await refreshAll();
+  renderContent();
+  showToast(`🗑️ ${deleted} observation${deleted>1?'s':''} deleted${failed?` (${failed} failed — check console)`:''}.`);
+}
+
 // ── DELETE OBSERVATION (admin only) ───────────────────
 async function deleteObservation(id){
   if(!isAdmin()) return alert('Only admins can delete observations.');
@@ -1169,8 +1223,9 @@ async function deleteObservation(id){
       const {error:phErr}=await db.from('observation_photos').delete().eq('observation_id',id);
       if(phErr) console.warn('Photo row delete error:', phErr.message);
     }
-    const {error}=await db.from('observations').delete().eq('id',id);
+    const {error,count}=await db.from('observations').delete({count:'exact'}).eq('id',id).eq('project_id',currentProject.id);
     if(error) throw error;
+    if(count===0) throw new Error('Row not deleted — check Supabase RLS: no DELETE policy on observations table for admins.');
     selectedObservation=null;
     await refreshAll();
     renderContent();
