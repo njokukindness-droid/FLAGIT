@@ -1514,12 +1514,12 @@ async function askFlagitAI(){
         model: groqModel,
         max_tokens: 300,
         messages: [
-          { role: 'system', content: 'You are a UAE HSE adviser for construction sites. Give concise, regulation-backed corrective actions.' },
+          { role: 'system', content: 'You are a UAE HSE adviser for construction sites. Give concise corrective actions referenced exclusively to the Dubai Municipality Code of Practice (DM CoP) and its Technical Guidelines (TG series). Do not cite ADOSH-SF, ISO standards, or UAE Labour Law unless no DM reference applies.' },
           { role: 'user', content:
 `Observation on a construction site:
 Category: ${cat}, Severity: ${sev}, Location: ${loc}
 "${desc}"
-Give 3-5 corrective steps. After each step cite the UAE/Dubai regulation (Dubai Municipality TG series, OSHAD-SF CoP, UAE Labour Law, or ISO standard). Format: "1. Action — Ref". No intro, no conclusion. Max 80 words.`
+Give 3-5 corrective steps. After each step cite the specific Dubai Municipality Code of Practice or Technical Guideline reference (e.g. DM CoP 2021, DM TG-01, DM TG-07). Format: "1. Action — Ref". No intro, no conclusion. Max 80 words.`
           }
         ]
       })
