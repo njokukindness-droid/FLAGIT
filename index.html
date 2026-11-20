@@ -1563,7 +1563,7 @@ function showDailyReportPicker(){
   picker.id='daily-report-picker';
   picker.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface1);border:1px solid var(--border);border-radius:14px;padding:24px;width:320px;z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.35)';
   const today=new Date().toISOString().slice(0,10);
-  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select date and format</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-brand" style="flex:1" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">📄 PDF</button><button class="btn btn-brand" style="flex:1;background:#1a5276" onclick="generateDailyReportDocx(document.getElementById('daily-report-date').value)">📝 Word</button></div><button class="btn btn-brand" style="width:100%;margin-bottom:8px;background:#145a32" onclick="generatePrintReport(document.getElementById('daily-report-date').value)">🖨️ Print / Save PDF (Fast)</button><button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button>`;
+  picker.innerHTML=`<div style="font-size:16px;font-weight:700;margin-bottom:4px">Daily Observation Report</div><div style="font-size:13px;color:var(--text2);margin-bottom:16px">Select date and format</div><input type="date" id="daily-report-date" value="${today}" style="width:100%;margin-bottom:16px"/><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-brand" style="flex:1" onclick="generateDailyReport(document.getElementById('daily-report-date').value)">📄 PDF</button><button class="btn btn-brand" style="flex:1;background:#1a5276" onclick="generateDailyReportDocx(document.getElementById('daily-report-date').value)">📝 Word</button></div><button class="btn btn-brand" style="width:100%;margin-bottom:8px;background:#4a235a" onclick="generateDailyReportDocxNoPhotos(document.getElementById('daily-report-date').value)">📋 Word (Manual — No Photos)</button><button class="btn btn-brand" style="width:100%;margin-bottom:8px;background:#145a32" onclick="generatePrintReport(document.getElementById('daily-report-date').value)">🖨️ Print / Save PDF (Fast)</button><button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('daily-report-picker').remove()">Cancel</button>`;
   document.body.appendChild(picker);
 }
 
@@ -2527,6 +2527,253 @@ async function generateDailyReportDocx(dateStr){
   const a=document.createElement('a');
   a.href=url;
   a.download=`HSE_Observation_Report_${dateStr}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── WORD (.docx) DAILY REPORT — NO PHOTOS (manual fill) ──────
+async function generateDailyReportDocxNoPhotos(dateStr){
+  document.getElementById('daily-report-picker')?.remove();
+  if(!dateStr){ alert('Please select a date'); return; }
+  const dayObs=observations.filter(o=>o.created_at&&o.created_at.slice(0,10)===dateStr);
+  if(!dayObs.length){ alert(`No observations found for ${dateStr}.`); return; }
+
+  showProgress('Building Word document (no photos)…');
+
+  const {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,ImageRun,
+    AlignmentType,WidthType,BorderStyle,ShadingType,HeadingLevel,
+    PageOrientation,TableLayoutType,VerticalAlign,PageSize,
+    Footer,TabStopType,TabStopLeader}=window.docx;
+
+  function hdrCell(text,w){
+    return new TableCell({
+      width:{size:w,type:WidthType.DXA},
+      shading:{type:ShadingType.CLEAR,color:'auto',fill:'00467F'},
+      verticalAlign:VerticalAlign.CENTER,
+      children:[new Paragraph({
+        alignment:AlignmentType.CENTER,
+        children:[new TextRun({text,bold:true,color:'FFFFFF',size:18,font:'Arial'})]
+      })]
+    });
+  }
+
+  function dataCell(text,w,opts={}){
+    return new TableCell({
+      width:{size:w,type:WidthType.DXA},
+      verticalAlign:VerticalAlign.CENTER,
+      shading:opts.shade?{type:ShadingType.CLEAR,color:'auto',fill:opts.shade}:undefined,
+      children:[new Paragraph({
+        alignment:opts.center?AlignmentType.CENTER:AlignmentType.LEFT,
+        children:[new TextRun({text:String(text||'-'),size:18,font:'Arial'})]
+      })]
+    });
+  }
+
+  function sigImgCell(b64,w){
+    if(!b64) return dataCell('',w,{center:true});
+    try{
+      const mimeMatch=b64.match(/^data:(image\/\w+);base64,/);
+      const imgType=(mimeMatch&&mimeMatch[1].includes('png'))?'png':'jpg';
+      const base64Data=b64.split(',')[1];
+      const binaryStr=atob(base64Data);
+      const bytes=new Uint8Array(binaryStr.length);
+      for(let i=0;i<binaryStr.length;i++) bytes[i]=binaryStr.charCodeAt(i);
+      return new TableCell({
+        width:{size:w,type:WidthType.DXA},
+        verticalAlign:VerticalAlign.CENTER,
+        children:[new Paragraph({
+          alignment:AlignmentType.CENTER,
+          children:[new ImageRun({data:bytes,type:imgType,transformation:{width:100,height:40}})]
+        })]
+      });
+    }catch(e){ return dataCell('',w,{center:true}); }
+  }
+
+  // Load signatures & logo (same as full version)
+  const sigs=await _loadSigs();
+  const {data:projData}=await db.from('projects').select('logo_url').eq('id',currentProject.id).single();
+  const logoUrl=projData?.logo_url||currentProject.logo_url||null;
+  let logoB64=null;
+  if(logoUrl){
+    try{
+      const {data:ldata}=await db.storage.from('project-logos').download(`${currentProject.id}/logo.${logoUrl.split('.').pop().split('?')[0]}`);
+      if(ldata) logoB64=await new Promise((res,rej)=>{const r=new FileReader();r.onloadend=()=>res(r.result);r.onerror=rej;r.readAsDataURL(ldata);});
+    }catch(e){}
+  }
+
+  const displayDate=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const orgName=(currentProject.org_name||currentProject.name||'').toUpperCase();
+  const _rawName=(currentProject.full_name||currentUser.user_metadata?.full_name||'');
+  const preparedBy=_rawName.includes('@')||_rawName.includes('.')?'Kindness Njoku':_rawName.trim()||'Kindness Njoku';
+  const projName=currentProject.name||'';
+  const projLocation=currentProject.location||dayObs[0]?.location||'Site';
+
+  const contentW=15398;
+  const cw=[500,800,1700,3000,2600,1500,700,1298,1700,1600];
+
+  const metaTable=new Table({
+    width:{size:contentW,type:WidthType.DXA},
+    layout:TableLayoutType.FIXED,
+    rows:[
+      new TableRow({children:[
+        hdrCell('Project / Contract',cw[0]+cw[1]+cw[2]+cw[3]),
+        hdrCell('Location / Plot',cw[4]+cw[5]),
+        hdrCell('Date',cw[6]+cw[7]),
+        hdrCell('Time of Inspection',cw[8]+cw[9])
+      ]}),
+      new TableRow({children:[
+        dataCell(projName,cw[0]+cw[1]+cw[2]+cw[3]),
+        dataCell(projLocation,cw[4]+cw[5]),
+        dataCell(displayDate,cw[6]+cw[7]),
+        dataCell(new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),cw[8]+cw[9])
+      ]})
+    ]
+  });
+
+  const roleCw=[1540,2000,3000,4158,2800,1900];
+  const roleTable=new Table({
+    width:{size:contentW,type:WidthType.DXA},
+    layout:TableLayoutType.FIXED,
+    rows:[
+      new TableRow({children:['Role','Job Title','Name','Company','Signature','Date'].map((h,i)=>hdrCell(h,roleCw[i]))}),
+      new TableRow({children:[
+        dataCell('Submitted to',roleCw[0]),dataCell('HSE Manager',roleCw[1]),
+        dataCell('Abass Afolabi',roleCw[2]),dataCell(orgName,roleCw[3]),
+        sigImgCell(sigs['sig_submitted_to'],roleCw[4]),dataCell(displayDate,roleCw[5])
+      ]}),
+      new TableRow({children:[
+        dataCell('Prepared by',roleCw[0]),dataCell('HSE Officer',roleCw[1]),
+        dataCell(preparedBy,roleCw[2]),dataCell(orgName,roleCw[3]),
+        sigImgCell(sigs['sig_prepared_by'],roleCw[4]),dataCell(displayDate,roleCw[5])
+      ]})
+    ]
+  });
+
+  const hazardCodes=[
+    ['A','Working at Heights'],['B','Ladders/Scaffold'],['C','Lifting Plant & Equip'],['D','Mobile Plant & Vehicle'],
+    ['E','Hot Works'],['F','Portable Electrical Equip'],['G','Power Tools/Machinery'],['H','Fire & Explosion'],
+    ['I','Chemicals'],['J','Environmental Aspect'],['K','Access & Egress'],['L','Slips, Trips & Falls'],
+    ['M','Manual Handling'],['N','Hand Tools'],['O','Excavation'],['P','Emergency Equipment'],['Q','PPE'],
+    ['R','Confined Space'],['S','Others']
+  ];
+  const hzPerRow=5; const hzRows=[];
+  for(let i=0;i<hazardCodes.length;i+=hzPerRow){
+    const slice=hazardCodes.slice(i,i+hzPerRow);
+    while(slice.length<hzPerRow) slice.push(['','']);
+    hzRows.push(new TableRow({children:slice.map(([code,desc])=>new TableCell({
+      width:{size:Math.floor(contentW/hzPerRow),type:WidthType.DXA},
+      children:[new Paragraph({children:[
+        new TextRun({text:code?`${code}  ${desc}`:'',size:16,font:'Arial'})
+      ]})]
+    }))}));
+  }
+  const hazardTable=new Table({width:{size:contentW,type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:hzRows});
+
+  // Observations table — photo columns are BLANK for manual insertion
+  const obsHdrRow=new TableRow({children:[
+    hdrCell('SN',cw[0]),hdrCell('Hazard\nCode',cw[1]),hdrCell('Photo\nInitial',cw[2]),
+    hdrCell('Hazards / Aspects & Risk / Impact',cw[3]),hdrCell('Recommended\nCorrective Action',cw[4]),
+    hdrCell('Responsible\nPerson',cw[5]),hdrCell('Cat.',cw[6]),hdrCell('Date to\nComplete',cw[7]),
+    hdrCell('Photo\nFinal',cw[8]),hdrCell('Date\nCompleted',cw[9])
+  ]});
+
+  const obsRows=[obsHdrRow];
+  dayObs.forEach((obs,idx)=>{
+    obsRows.push(new TableRow({children:[
+      dataCell(String(idx+1),cw[0],{center:true}),
+      dataCell(obs.hazard_codes||'-',cw[1],{center:true}),
+      dataCell('',cw[2]),                                          // blank — manual photo
+      dataCell(obs.description||'-',cw[3]),
+      dataCell(obs.recommendation||'-',cw[4]),
+      dataCell(obs.responsible_person||'-',cw[5]),
+      dataCell(obs.risk_level||obs.severity||'-',cw[6],{center:true}),
+      dataCell(obs.timeframe||'-',cw[7],{center:true}),
+      dataCell('',cw[8]),                                          // blank — manual photo
+      dataCell(obs.closeout_action?displayDate:'-',cw[9],{center:true})
+    ]}));
+  });
+  const obsTable=new Table({width:{size:contentW,type:WidthType.DXA},layout:TableLayoutType.FIXED,rows:obsRows});
+
+  let logoPara=null;
+  if(logoB64){
+    try{
+      const mimeMatch=logoB64.match(/^data:(image\/\w+);base64,/);
+      const imgType=(mimeMatch&&mimeMatch[1].includes('png'))?'png':'jpg';
+      const base64Data=logoB64.split(',')[1];
+      const binaryStr=atob(base64Data);
+      const bytes=new Uint8Array(binaryStr.length);
+      for(let i=0;i<binaryStr.length;i++) bytes[i]=binaryStr.charCodeAt(i);
+      logoPara=new Paragraph({
+        alignment:AlignmentType.RIGHT,
+        children:[new ImageRun({data:bytes,type:imgType,transformation:{width:80,height:30}})]
+      });
+    }catch(e){}
+  }
+
+  const _ts=TabStopType||{CENTER:'center',RIGHT:'right'};
+  const docFooter=new Footer({
+    children:[new Paragraph({
+      children:[
+        new TextRun({text:'TASETI/FRM/HSE/019  Rev:-00',size:14,font:'Arial'}),
+        new TextRun({text:'\t',size:14}),
+        new TextRun({text:'Page ',size:14,font:'Arial'}),
+        ...(window.docx.PageNumber?
+          [new window.docx.PageNumber({size:14,font:'Arial'}),
+           new TextRun({text:' of ',size:14,font:'Arial'}),
+           new window.docx.PageNumber({size:14,font:'Arial',type:'TotalPages'})]
+          :[new TextRun({text:'X of Y',size:14,font:'Arial'})]),
+        new TextRun({text:'\t',size:14}),
+        new TextRun({text:`FLAGIT HSE Observation Platform | ${displayDate}`,size:14,font:'Arial'})
+      ],
+      tabStops:[
+        {type:_ts.CENTER,position:7699},
+        {type:_ts.RIGHT,position:15398}
+      ]
+    })]
+  });
+
+  const doc=new Document({
+    sections:[{
+      properties:{
+        page:{
+          size:{width:16838,height:11906,orientation:PageOrientation.LANDSCAPE},
+          margin:{top:720,bottom:720,left:720,right:720}
+        }
+      },
+      footers:{default:docFooter},
+      children:[
+        new Table({
+          width:{size:contentW,type:WidthType.DXA},
+          layout:TableLayoutType.FIXED,
+          rows:[new TableRow({children:[new TableCell({
+            width:{size:contentW,type:WidthType.DXA},
+            shading:{type:ShadingType.CLEAR,color:'auto',fill:'00467F'},
+            children:[
+              new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'HEALTH, SAFETY AND ENVIRONMENT',bold:true,size:28,color:'FFFFFF',font:'Arial'})]}),
+              new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'HSE OBSERVATION REPORT',size:20,color:'FFFFFF',font:'Arial'})]}),
+              ...(logoPara?[logoPara]:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:orgName,size:18,color:'FFFFFF',font:'Arial'})]})])
+            ]
+          })]})]}),
+        new Paragraph({text:''}),
+        metaTable,
+        new Paragraph({text:''}),
+        roleCw&&roleTable,
+        new Paragraph({text:'',spacing:{before:100,after:100}}),
+        new Paragraph({children:[new TextRun({text:'HAZARD CODE REFERENCE',bold:true,size:20,font:'Arial'})]}),
+        hazardTable,
+        new Paragraph({text:'',spacing:{before:100,after:100}}),
+        obsTable
+      ].filter(Boolean)
+    }]
+  });
+
+  showProgress('Finalising…');
+  const blob=await Packer.toBlob(doc);
+  hideProgress();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`HSE_Observation_Report_NoPhotos_${dateStr}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
