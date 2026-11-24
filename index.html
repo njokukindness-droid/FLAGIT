@@ -2964,58 +2964,218 @@ async function init(){
   db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
 }
 
-// ── TRAINIT — TNA GENERATOR ──────────────────────────
-let tnaResult = null; // stores last generated TNA text
+// ── TRAINIT — FULL MODULE ─────────────────────────────
+let tnaResult = null;
+let trainitView = 'register'; // 'register' | 'tna' | 'dashboard'
+let trainingWorkers = [];
+let trainingRecords = [];
+let trainitLoaded = false;
+
+async function loadTrainItData(){
+  const [wRes, rRes] = await Promise.all([
+    db.from('training_workers').select('*').eq('project_id', currentProject.id).order('group_name').order('name'),
+    db.from('training_records').select('*').eq('project_id', currentProject.id)
+  ]);
+  trainingWorkers = wRes.data || [];
+  trainingRecords = rRes.data || [];
+  trainitLoaded = true;
+}
 
 function renderTrainIT(c){
-  const companyLabel = currentProject?.org_name ? `${currentProject.org_name} — ${currentProject.name}` : (currentProject?.name||'');
-  const today = new Date().toISOString().split('T')[0];
+  if(!trainitLoaded){ loadTrainItData().then(()=>renderTrainIT(c)); c.innerHTML='<div style="padding:32px;text-align:center;color:var(--text2)">Loading TrainIT...</div>'; return; }
+  const tabs=[['register','📋 Register'],['dashboard','📊 Dashboard'],['tna','🤖 TNA']];
+  const tabBar=tabs.map(([k,l])=>`<button onclick="trainitView='${k}';renderContent()" style="flex:1;padding:10px 4px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid ${trainitView===k?'var(--brand)':'transparent'};background:none;color:${trainitView===k?'var(--brand)':'var(--text2)'};">${l}</button>`).join('');
+  const wrap=`<div style="padding-bottom:100px"><div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px">${tabBar}</div><div id="trainit-body" style="padding:0 16px">BODY</div></div>`;
 
-  // Build hazard summary from current observations
-  const catCounts = {};
-  const sevCounts = {};
-  observations.forEach(o=>{
-    catCounts[o.category]=(catCounts[o.category]||0)+1;
-    sevCounts[o.severity]=(sevCounts[o.severity]||0)+1;
-  });
-  const topCats = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`${k} (${v})`).join(', ');
-  const totalObs = observations.length;
-  const critCount = sevCounts['Critical']||0;
-  const highCount = sevCounts['High']||0;
+  if(trainitView==='register'){
+    c.innerHTML=wrap.replace('BODY', renderTrainItRegister());
+  } else if(trainitView==='dashboard'){
+    c.innerHTML=wrap.replace('BODY', renderTrainItDashboard());
+  } else {
+    c.innerHTML=wrap.replace('BODY', renderTNAForm());
+  }
+}
 
-  c.innerHTML=`
-  <div style="padding:16px 16px 100px">
-    <div style="font-size:18px;font-weight:700;margin-bottom:4px">🎓 TrainIT — TNA Generator</div>
-    <div class="small" style="margin-bottom:16px">Auto-pulls hazard exposure from your FLAGIT observation history and generates a structured Training Needs Analysis report.</div>
+function renderTrainItDashboard(){
+  const total = trainingWorkers.length;
+  if(!total) return `<div class="card"><div style="font-weight:600;margin-bottom:4px">No workers added yet</div><div class="small">Go to the Register tab to add workers and log training sessions.</div></div>`;
 
-    ${totalObs===0?`<div class="card" style="border-left:3px solid var(--brand)"><div style="font-weight:600;margin-bottom:4px">No observations yet</div><div class="small">Log some HSE observations on the Feed first — the TNA uses your hazard history to recommend relevant training.</div></div>`:''}
+  // Count completed records
+  const completed = trainingRecords.filter(r=>r.status==='C').length;
+  const planned   = trainingRecords.filter(r=>r.status==='P').length;
+  const expired   = trainingRecords.filter(r=>r.status==='E').length;
+  const totalRec  = trainingRecords.length;
 
-    <div class="card" style="margin-bottom:12px;border-left:3px solid #185fa5">
-      <div style="font-weight:600;margin-bottom:6px;font-size:13px;color:#185fa5">📊 Hazard Exposure from FLAGIT</div>
-      <div class="small"><b>${totalObs}</b> observations logged &nbsp;·&nbsp; <b>${critCount}</b> Critical &nbsp;·&nbsp; <b>${highCount}</b> High</div>
-      ${topCats?`<div class="small" style="margin-top:4px"><b>Top categories:</b> ${topCats}</div>`:''}
+  // Topics breakdown
+  const topicCounts={};
+  trainingRecords.filter(r=>r.status==='C').forEach(r=>{ topicCounts[r.topic]=(topicCounts[r.topic]||0)+1; });
+  const topTopics=Object.entries(topicCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Internal vs external
+  const intC=trainingRecords.filter(r=>r.training_type==='internal'&&r.status==='C').length;
+  const extC=trainingRecords.filter(r=>r.training_type==='external'&&r.status==='C').length;
+
+  // Per-group stats
+  const groups=[...new Set(trainingWorkers.map(w=>w.group_name))];
+  const groupRows=groups.map(g=>{
+    const gWorkers=trainingWorkers.filter(w=>w.group_name===g).map(w=>w.id);
+    const gC=trainingRecords.filter(r=>gWorkers.includes(r.worker_id)&&r.status==='C').length;
+    const gT=trainingRecords.filter(r=>gWorkers.includes(r.worker_id)).length;
+    const pct=gT?Math.round(gC/gT*100):0;
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${esc(g)} (${gWorkers.length} workers)</span><b>${pct}%</b></div><div style="height:6px;border-radius:999px;background:var(--surface2)"><div style="height:6px;border-radius:999px;background:var(--brand);width:${pct}%"></div></div></div>`;
+  }).join('');
+
+  return `
+    <div class="metric-grid" style="margin-bottom:12px">
+      <div class="metric"><div class="lbl">Workers</div><div class="val">${total}</div></div>
+      <div class="metric"><div class="lbl">Completed</div><div class="val" style="color:#27ae60">${completed}</div></div>
+      <div class="metric"><div class="lbl">Planned</div><div class="val" style="color:#e67e22">${planned}</div></div>
+      <div class="metric"><div class="lbl">Expired</div><div class="val" style="color:var(--red)">${expired}</div></div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:10px">Training by type</div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#185fa5">${intC}</div><div class="small">Internal TBT</div></div>
+        <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#4a235a">${extC}</div><div class="small">External / Competency</div></div>
+      </div>
+    </div>
+    ${groups.length>1?`<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:10px">Completion by group</div>${groupRows}</div>`:''}
+    ${topTopics.length?`<div class="card"><div style="font-weight:700;margin-bottom:10px">Most-delivered training topics</div>${topTopics.map(([t,n])=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)""><span>${esc(t)}</span><b>${n}</b></div>`).join('')}</div>`:''}
+    <div style="margin-top:12px">
+      <button class="btn btn-ghost" style="width:100%;padding:12px" onclick="exportTrainingMatrix()">⬇ Download Training Matrix (Excel)</button>
+    </div>`;
+}
+
+function renderTrainItRegister(){
+  const groups=[...new Set(trainingWorkers.map(w=>w.group_name))];
+  if(!groups.length) groups.push('');
+
+  // All unique topics used so far (for the log form dropdown)
+  const allTopics=[...new Set(trainingRecords.map(r=>r.topic))].sort();
+
+  const workerRows = groups.map(g=>{
+    const gWorkers = trainingWorkers.filter(w=>w.group_name===g);
+    if(!gWorkers.length) return '';
+    const rows = gWorkers.map(w=>{
+      const wRecs = trainingRecords.filter(r=>r.worker_id===w.id);
+      const cCount = wRecs.filter(r=>r.status==='C').length;
+      const total  = wRecs.length;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600;font-size:14px">${esc(w.name)}</div>
+          <div class="small">${esc(w.role_designation)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#27ae60">${cCount}/${total}</div><div style="font-size:11px;color:var(--text2)">completed</div></div>
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px" onclick="showLogTrainingModal('${w.id}','${esc(w.name)}')">+ Log</button>
+          <button class="btn btn-ghost" style="padding:6px 8px;font-size:12px;color:var(--red)" onclick="deleteWorker('${w.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="card" style="margin-bottom:10px"><div style="font-weight:700;font-size:13px;color:#185fa5;margin-bottom:8px">${esc(g)||'Workers'}</div>${rows}</div>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-brand" style="flex:1;padding:11px" onclick="showAddWorkerModal()">+ Add Worker</button>
+      <button class="btn btn-ghost" style="flex:1;padding:11px" onclick="exportTrainingMatrix()">⬇ Export Excel</button>
+    </div>
+    ${!trainingWorkers.length?`<div class="card"><div style="font-weight:600;margin-bottom:4px">No workers yet</div><div class="small">Tap "Add Worker" to add personnel to this project's training register.</div></div>`:''}
+    ${workerRows}
+
+    <!-- Add Worker Modal -->
+    <div id="add-worker-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
+        <div style="font-weight:700;font-size:16px;margin-bottom:14px">Add Worker</div>
+        <div class="field-label">Full name</div>
+        <input type="text" id="aw-name" placeholder="e.g. Muhammad Yaqoob" style="margin-bottom:10px" />
+        <div class="field-label">Role / Designation</div>
+        <input type="text" id="aw-role" placeholder="e.g. Foreman, Helper, Surveyor" style="margin-bottom:10px" />
+        <div class="field-label">Group / Company</div>
+        <input type="text" id="aw-group" placeholder="e.g. Main Workforce, AR Dewatering, New Inductees" style="margin-bottom:10px" value="Main Workforce" />
+        <div id="aw-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('add-worker-modal').style.display='none'">Cancel</button>
+          <button class="btn btn-brand" style="flex:1" onclick="saveWorker()">Save</button>
+        </div>
+      </div>
     </div>
 
-    <div style="font-weight:700;margin-bottom:10px;font-size:14px">Project & Workforce Details</div>
+    <!-- Log Training Modal -->
+    <div id="log-training-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
+        <div style="font-weight:700;font-size:16px;margin-bottom:4px">Log Training</div>
+        <div id="lt-worker-label" class="small" style="margin-bottom:14px;color:var(--text2)"></div>
+        <input type="hidden" id="lt-worker-id" />
+        <div class="field-label">Training type</div>
+        <select id="lt-type" style="margin-bottom:10px" onchange="toggleExternalFields()">
+          <option value="internal">Internal TBT</option>
+          <option value="external">External / Competency</option>
+        </select>
+        <div class="field-label">Topic / Course title</div>
+        <input type="text" id="lt-topic" list="lt-topic-list" placeholder="e.g. Heat Stress, Excavation Safety, First Aid" style="margin-bottom:10px" />
+        <datalist id="lt-topic-list">${allTopics.map(t=>`<option value="${esc(t)}">`).join('')}
+          <option value="HSE Induction"><option value="Manual Handling"><option value="Heat Stress"><option value="Excavation Safety">
+          <option value="Electrical Safety"><option value="Fire Safety"><option value="PPE General"><option value="Housekeeping">
+          <option value="Confined Space Awareness"><option value="Working at Height"><option value="Lifting Operations">
+          <option value="First Aid / Basic Life Support"><option value="Fire Warden"><option value="Permit to Work (PTW)">
+          <option value="Task Risk Assessment (TRA)"><option value="Emergency Response">
+        </datalist>
+        <div class="field-label">Date delivered</div>
+        <input type="date" id="lt-date" value="${new Date().toISOString().split('T')[0]}" style="margin-bottom:10px" />
+        <div class="field-label">Status</div>
+        <select id="lt-status" style="margin-bottom:10px">
+          <option value="C">C — Completed / Certified</option>
+          <option value="P">P — Planned</option>
+          <option value="E">E — Expired / Due Renewal</option>
+          <option value="N">— Not Applicable</option>
+        </select>
+        <div id="lt-external-fields" style="display:none">
+          <div class="field-label">Validity (months)</div>
+          <select id="lt-validity" style="margin-bottom:10px">
+            <option value="">— Select —</option>
+            <option value="12">12 months</option>
+            <option value="24">24 months</option>
+            <option value="36">36 months</option>
+            <option value="60">60 months</option>
+          </select>
+          <div class="field-label">Certificate reference (optional)</div>
+          <input type="text" id="lt-certref" placeholder="e.g. OSHAD-2024-001" style="margin-bottom:10px" />
+        </div>
+        <div id="lt-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('log-training-modal').style.display='none'">Cancel</button>
+          <button class="btn btn-brand" style="flex:1" onclick="saveTrainingRecord()">Save</button>
+        </div>
+      </div>
+    </div>`;
+}
 
+function renderTNAForm(){
+  const companyLabel = currentProject?.org_name ? `${currentProject.org_name} — ${currentProject.name}` : (currentProject?.name||'');
+  const today = new Date().toISOString().split('T')[0];
+  const catCounts={};const sevCounts={};
+  observations.forEach(o=>{ catCounts[o.category]=(catCounts[o.category]||0)+1; sevCounts[o.severity]=(sevCounts[o.severity]||0)+1; });
+  const topCats=Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`${k} (${v})`).join(', ');
+  const totalObs=observations.length; const critCount=sevCounts['Critical']||0; const highCount=sevCounts['High']||0;
+  return `
+    <div class="card" style="margin-bottom:12px;border-left:3px solid #185fa5">
+      <div style="font-weight:600;margin-bottom:6px;font-size:13px;color:#185fa5">📊 Hazard Exposure from FLAGIT</div>
+      <div class="small"><b>${totalObs}</b> observations &nbsp;·&nbsp; <b>${critCount}</b> Critical &nbsp;·&nbsp; <b>${highCount}</b> High</div>
+      ${topCats?`<div class="small" style="margin-top:4px"><b>Top categories:</b> ${topCats}</div>`:'<div class="small" style="margin-top:4px">No observations yet — TNA will be generated from form data only.</div>'}
+    </div>
     <div class="field-label">Company / Project</div>
     <input type="text" id="tna-company" value="${esc(companyLabel)}" placeholder="e.g. TASETI — R1181" style="margin-bottom:10px" />
-
     <div class="field-label">Site / Location</div>
     <input type="text" id="tna-site" placeholder="e.g. KEZAD ICAD III, Abu Dhabi" style="margin-bottom:10px" />
-
     <div class="field-label">Type of work / scope</div>
     <input type="text" id="tna-scope" placeholder="e.g. Underground utilities, excavation, lifting operations" style="margin-bottom:10px" />
-
     <div class="field-label">Workforce size (approximate)</div>
-    <input type="number" id="tna-workforce" placeholder="e.g. 45" min="1" style="margin-bottom:10px" />
-
+    <input type="number" id="tna-workforce" placeholder="e.g. 45" min="1" style="margin-bottom:10px" value="${trainingWorkers.length||''}" />
     <div class="field-label">Key trades / disciplines on site</div>
-    <input type="text" id="tna-trades" placeholder="e.g. Civil engineers, pipe fitters, crane operators, labourers" style="margin-bottom:10px" />
-
+    <input type="text" id="tna-trades" placeholder="e.g. Civil engineers, pipe fitters, crane operators, labourers" style="margin-bottom:10px" value="${[...new Set(trainingWorkers.map(w=>w.role_designation))].slice(0,6).join(', ')}" />
     <div class="field-label">Nationalities / language groups</div>
     <input type="text" id="tna-nationalities" placeholder="e.g. Indian, Pakistani, Filipino, Egyptian" style="margin-bottom:10px" />
-
     <div class="field-label">Average HSE experience level of workers</div>
     <select id="tna-exp" style="margin-bottom:10px">
       <option value="">— Select —</option>
@@ -3025,30 +3185,23 @@ function renderTrainIT(c){
       <option value="Senior (7+ years)">Senior (7+ years)</option>
       <option value="Mixed">Mixed levels</option>
     </select>
-
-    <div class="field-label">Current training already in place (if any)</div>
-    <input type="text" id="tna-existing" placeholder="e.g. Induction, TBT, manual handling, fire safety" style="margin-bottom:10px" />
-
+    <div class="field-label">Current training already in place</div>
+    <input type="text" id="tna-existing" placeholder="e.g. Induction, TBT, manual handling, fire safety" style="margin-bottom:10px" value="${[...new Set(trainingRecords.filter(r=>r.status==='C').map(r=>r.topic))].slice(0,6).join(', ')}" />
     <div class="field-label">Upcoming high-risk activities (next 30 days)</div>
     <input type="text" id="tna-upcoming" placeholder="e.g. Confined space entry, hot works, scaffold erection" style="margin-bottom:10px" />
-
     <div class="field-label">Applicable regulatory framework</div>
     <select id="tna-regs" style="margin-bottom:10px">
-      <option value="Dubai Municipality CoP / TG series">Dubai Municipality CoP / TG series</option>
       <option value="ADOSH-SF CoP (Abu Dhabi)">ADOSH-SF CoP (Abu Dhabi)</option>
+      <option value="Dubai Municipality CoP / TG series">Dubai Municipality CoP / TG series</option>
       <option value="Both DM and ADOSH (multi-emirate project)">Both DM and ADOSH (multi-emirate project)</option>
       <option value="Client-specific HSE standards">Client-specific HSE standards</option>
     </select>
-
     <div class="field-label">Client / Main contractor (optional)</div>
     <input type="text" id="tna-client" placeholder="e.g. AD Ports / KEZAD Group" style="margin-bottom:10px" />
-
     <div class="field-label">TNA prepared by</div>
     <input type="text" id="tna-preparedby" value="${esc(currentUser?.user_metadata?.full_name||'')}" placeholder="Your name" style="margin-bottom:10px" />
-
     <div class="field-label">TNA date</div>
     <input type="date" id="tna-date" value="${today}" style="margin-bottom:10px" />
-
     <div class="field-label">Review period</div>
     <select id="tna-period" style="margin-bottom:10px">
       <option value="Monthly">Monthly</option>
@@ -3056,26 +3209,174 @@ function renderTrainIT(c){
       <option value="Bi-annually">Bi-annually</option>
       <option value="Annually">Annually</option>
     </select>
-
     <div class="field-label">Additional notes / specific concerns (optional)</div>
     <textarea id="tna-notes" rows="3" placeholder="Any specific incidents, near-misses, or areas of concern not captured in FLAGIT..." style="margin-bottom:16px"></textarea>
-
     <div id="tna-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
     <div id="tna-status" style="display:none;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:var(--text2)">
       <div style="width:18px;height:18px;border:2px solid var(--brand);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
       Generating TNA report with AI...
     </div>
-
     <button class="btn btn-brand" style="width:100%;margin-bottom:8px" onclick="generateTNA()">🤖 Generate TNA Report with AI</button>
-
     <div id="tna-output-section" style="display:none;margin-top:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-weight:700;font-size:15px">📄 Training Needs Analysis</div>
         <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="exportTNADocx()">⬇ Export Word</button>
       </div>
       <div id="tna-output" style="background:var(--surface2);border-radius:10px;padding:16px;font-size:13px;line-height:1.75;white-space:pre-wrap;border:1px solid var(--border)"></div>
-    </div>
-  </div>`;
+    </div>`;
+}
+
+function showAddWorkerModal(){ document.getElementById('add-worker-modal').style.display='flex'; document.getElementById('aw-name').value=''; document.getElementById('aw-role').value=''; document.getElementById('aw-group').value='Main Workforce'; document.getElementById('aw-err').style.display='none'; }
+function showLogTrainingModal(wId,wName){ document.getElementById('log-training-modal').style.display='flex'; document.getElementById('lt-worker-id').value=wId; document.getElementById('lt-worker-label').textContent='Worker: '+wName; document.getElementById('lt-topic').value=''; document.getElementById('lt-date').value=new Date().toISOString().split('T')[0]; document.getElementById('lt-status').value='C'; document.getElementById('lt-type').value='internal'; document.getElementById('lt-certref').value=''; document.getElementById('lt-validity').value=''; document.getElementById('lt-err').style.display='none'; toggleExternalFields(); }
+function toggleExternalFields(){ const t=document.getElementById('lt-type').value; document.getElementById('lt-external-fields').style.display=t==='external'?'block':'none'; }
+
+async function saveWorker(){
+  const name=document.getElementById('aw-name').value.trim();
+  const role=document.getElementById('aw-role').value.trim();
+  const group=document.getElementById('aw-group').value.trim()||'Main Workforce';
+  const errEl=document.getElementById('aw-err');
+  if(!name||!role){ errEl.textContent='Name and role are required.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  const {error}=await db.from('training_workers').insert({project_id:currentProject.id,name,role_designation:role,group_name:group,created_by:currentUser.id});
+  if(error){ errEl.textContent='Error: '+error.message; errEl.style.display='block'; return; }
+  document.getElementById('add-worker-modal').style.display='none';
+  await loadTrainItData(); renderContent();
+}
+
+async function saveTrainingRecord(){
+  const workerId=document.getElementById('lt-worker-id').value;
+  const topic=document.getElementById('lt-topic').value.trim();
+  const type=document.getElementById('lt-type').value;
+  const date=document.getElementById('lt-date').value||null;
+  const status=document.getElementById('lt-status').value;
+  const validity=document.getElementById('lt-validity')?.value||null;
+  const certRef=document.getElementById('lt-certref')?.value.trim()||null;
+  const errEl=document.getElementById('lt-err');
+  if(!topic){ errEl.textContent='Please enter a training topic.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  const payload={project_id:currentProject.id,worker_id:workerId,topic,training_type:type,training_date:date,status,created_by:currentUser.id,updated_at:new Date().toISOString()};
+  if(validity) payload.validity_months=parseInt(validity);
+  if(certRef) payload.certificate_ref=certRef;
+  // Upsert — update if same worker+topic+type already exists
+  const {error}=await db.from('training_records').upsert(payload,{onConflict:'worker_id,topic,training_type'});
+  if(error){ errEl.textContent='Error: '+error.message; errEl.style.display='block'; return; }
+  document.getElementById('log-training-modal').style.display='none';
+  await loadTrainItData(); renderContent();
+}
+
+async function deleteWorker(wId){
+  if(!confirm('Remove this worker and all their training records?')) return;
+  await db.from('training_records').delete().eq('worker_id',wId);
+  await db.from('training_workers').delete().eq('id',wId);
+  await loadTrainItData(); renderContent();
+}
+
+async function exportTrainingMatrix(){
+  if(!trainingWorkers.length){ alert('No workers in the register yet.'); return; }
+  showProgress('Building training matrix...');
+  try{
+    // Load xlsx via CDN
+    if(!window.XLSX){
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+    }
+    const wb=XLSX.utils.book_new();
+    const proj=currentProject;
+    const companyLabel=proj?.org_name?`${proj.org_name} — ${proj.name}`:(proj?.name||'');
+    const prepBy=currentUser?.user_metadata?.full_name||'HSE Team';
+    const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+    // ── Sheet 1: Internal TBT ────────────────────────────
+    const intRecs=trainingRecords.filter(r=>r.training_type==='internal');
+    const intTopics=[...new Set(intRecs.map(r=>r.topic))].sort();
+    const intRecMap={}; intRecs.forEach(r=>{ intRecMap[`${r.worker_id}||${r.topic}`]=r.status; });
+    const groups=[...new Set(trainingWorkers.map(w=>w.group_name))];
+
+    const s1rows=[];
+    // Header rows
+    s1rows.push([`${companyLabel} — HSE INTERNAL TBT TRAINING REGISTER`,...Array(intTopics.length+2).fill('')]);
+    s1rows.push([`Prepared by: ${prepBy}   |   Date: ${today}   |   Legend: C = Completed   P = Planned   — = Not Applicable`,...Array(intTopics.length+2).fill('')]);
+    s1rows.push(['#','Name','Role / Designation',...intTopics.map(t=>t)]);
+
+    let rowNum=1;
+    groups.forEach(g=>{
+      const gWorkers=trainingWorkers.filter(w=>w.group_name===g);
+      s1rows.push([`▸ ${g} (${gWorkers.length} personnel)`,...Array(intTopics.length+2).fill('')]);
+      gWorkers.forEach(w=>{
+        const cells=[rowNum++,w.name,w.role_designation];
+        intTopics.forEach(t=>{ cells.push(intRecMap[`${w.id}||${t}`]||'—'); });
+        s1rows.push(cells);
+      });
+      // Group completion row
+      const compRow=['','Group Completion →',''];
+      intTopics.forEach(t=>{
+        const c=gWorkers.filter(w=>intRecMap[`${w.id}||${t}`]==='C').length;
+        const tot=gWorkers.filter(w=>intRecMap[`${w.id}||${t}`]&&intRecMap[`${w.id}||${t}`]!=='—').length;
+        compRow.push(tot?`${Math.round(c/tot*100)}%`:'—');
+      });
+      s1rows.push(compRow);
+    });
+    // Overall completion
+    const overallRow=['','OVERALL COMPLETION RATE',''];
+    intTopics.forEach(t=>{
+      const c=trainingWorkers.filter(w=>intRecMap[`${w.id}||${t}`]==='C').length;
+      const tot=trainingWorkers.filter(w=>intRecMap[`${w.id}||${t}`]&&intRecMap[`${w.id}||${t}`]!=='—').length;
+      overallRow.push(tot?`${Math.round(c/tot*100)}%`:'—');
+    });
+    s1rows.push(overallRow);
+
+    const ws1=XLSX.utils.aoa_to_sheet(s1rows);
+    // Column widths
+    ws1['!cols']=[{wch:4},{wch:28},{wch:22},...intTopics.map(()=>({wch:18}))];
+    XLSX.utils.book_append_sheet(wb,ws1,'1. Internal TBT Training');
+
+    // ── Sheet 2: External Competency ────────────────────
+    const extRecs=trainingRecords.filter(r=>r.training_type==='external');
+    const extTopics=[...new Set(extRecs.map(r=>r.topic))].sort();
+    const extRecMap={}; extRecs.forEach(r=>{ extRecMap[`${r.worker_id}||${r.topic}`]={status:r.status,validity:r.validity_months,cert:r.certificate_ref}; });
+
+    // Build validity map for headers
+    const validityMap={};
+    extRecs.forEach(r=>{ if(r.validity_months&&!validityMap[r.topic]) validityMap[r.topic]=r.validity_months; });
+
+    const s2rows=[];
+    s2rows.push([`${companyLabel} — EXTERNAL / COMPETENCY TRAINING REGISTER`,...Array(extTopics.length+2).fill('')]);
+    s2rows.push([`Prepared by: ${prepBy}   |   Date: ${today}   |   Legend: C = Certified   P = Planned   E = Expired   — = Not Required`,...Array(extTopics.length+2).fill('')]);
+    s2rows.push(['#','Name','Role / Designation',...extTopics.map(t=>validityMap[t]?`${t}\nValidity: ${validityMap[t]}m`:t)]);
+
+    let rn2=1;
+    groups.forEach(g=>{
+      const gWorkers=trainingWorkers.filter(w=>w.group_name===g);
+      s2rows.push([`▸ ${g} (${gWorkers.length} personnel)`,...Array(extTopics.length+2).fill('')]);
+      gWorkers.forEach(w=>{
+        const cells=[rn2++,w.name,w.role_designation];
+        extTopics.forEach(t=>{ cells.push(extRecMap[`${w.id}||${t}`]?.status||'—'); });
+        s2rows.push(cells);
+      });
+      const compRow=['','Category Completion →',''];
+      extTopics.forEach(t=>{
+        const c=gWorkers.filter(w=>extRecMap[`${w.id}||${t}`]?.status==='C').length;
+        const tot=gWorkers.filter(w=>extRecMap[`${w.id}||${t}`]?.status&&extRecMap[`${w.id}||${t}`]?.status!=='—').length;
+        compRow.push(tot?`${Math.round(c/tot*100)}%`:'—');
+      });
+      s2rows.push(compRow);
+    });
+    const ov2=['','OVERALL COMPLETION RATE',''];
+    extTopics.forEach(t=>{
+      const c=trainingWorkers.filter(w=>extRecMap[`${w.id}||${t}`]?.status==='C').length;
+      const tot=trainingWorkers.filter(w=>extRecMap[`${w.id}||${t}`]?.status&&extRecMap[`${w.id}||${t}`]?.status!=='—').length;
+      ov2.push(tot?`${Math.round(c/tot*100)}%`:'—');
+    });
+    s2rows.push(ov2);
+
+    const ws2=XLSX.utils.aoa_to_sheet(s2rows);
+    ws2['!cols']=[{wch:4},{wch:28},{wch:22},...extTopics.map(()=>({wch:22}))];
+    XLSX.utils.book_append_sheet(wb,ws2,'2. External Competency Training');
+
+    // Download
+    const filename=`Training_Matrix_${(proj?.name||'Project').replace(/[^a-zA-Z0-9]/g,'_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb,filename);
+  }catch(err){ alert('Export failed: '+err.message); }
+  finally{ document.getElementById('progress-overlay').style.display='none'; }
 }
 
 async function generateTNA(){
