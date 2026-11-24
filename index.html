@@ -213,6 +213,7 @@ button{cursor:pointer}
     <button id="nav-notifications" onclick="setView('notifications')">Alerts</button>
     <button id="nav-members" onclick="setView('members')">Team</button>
     <button id="nav-reportsettings" onclick="setView('reportsettings')" style="display:none">Reports</button>
+    <button id="nav-trainit" onclick="setView('trainit')" style="display:none">TrainIT</button>
     <button id="nav-sync" onclick="syncOfflineObservations()" title="Sync offline observations" style="position:relative;display:none">
       📶 <span id="offline-sync-badge" style="display:none;position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;"></span>
     </button>
@@ -760,6 +761,9 @@ function renderTopBar(){
   // Show Reports tab for admins only
   const rsTab=document.getElementById('nav-reportsettings');
   if(rsTab) rsTab.style.display=isAdmin()?'flex':'none';
+  // Show TrainIT tab for admins only
+  const trnTab=document.getElementById('nav-trainit');
+  if(trnTab) trnTab.style.display=isAdmin()?'flex':'none';
   // Update company logo in top bar
   const logoImg=document.getElementById('top-project-logo');
   if(logoImg){
@@ -794,7 +798,7 @@ async function loadNotifications(){
 
 function setView(v){
   currentView=v;
-  ['feed','dashboard','notifications','members','reportsettings'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
+  ['feed','dashboard','notifications','members','reportsettings','trainit'].forEach(k=>{ const el=document.getElementById('nav-'+k); if(el) el.classList.toggle('active',k===v); });
   selectedObservation=null;
   document.getElementById('fab-btn').style.display=v==='feed'?'flex':'none';
   renderContent();
@@ -807,6 +811,7 @@ function renderContent(){
   if(currentView==='notifications') return renderNotifications(c);
   if(currentView==='members') return renderMembers(c);
   if(currentView==='reportsettings') return renderReportSettings(c);
+  if(currentView==='trainit') return renderTrainIT(c);
   renderFeed(c);
 }
 
@@ -2957,6 +2962,303 @@ async function init(){
   if(!db){ showError('auth-err','Could not connect to the database.'); return; }
   try{ const{data:{session}}=await db.auth.getSession(); if(session){await startApp();return;} }catch(e){ console.warn('Session check failed:',e.message); }
   db.auth.onAuthStateChange(async(event)=>{ if(event==='SIGNED_OUT'){document.getElementById('app-shell').classList.remove('active');document.getElementById('screen-auth').classList.add('active');} });
+}
+
+// ── TRAINIT — TNA GENERATOR ──────────────────────────
+let tnaResult = null; // stores last generated TNA text
+
+function renderTrainIT(c){
+  const companyLabel = currentProject?.org_name ? `${currentProject.org_name} — ${currentProject.name}` : (currentProject?.name||'');
+  const today = new Date().toISOString().split('T')[0];
+
+  // Build hazard summary from current observations
+  const catCounts = {};
+  const sevCounts = {};
+  observations.forEach(o=>{
+    catCounts[o.category]=(catCounts[o.category]||0)+1;
+    sevCounts[o.severity]=(sevCounts[o.severity]||0)+1;
+  });
+  const topCats = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`${k} (${v})`).join(', ');
+  const totalObs = observations.length;
+  const critCount = sevCounts['Critical']||0;
+  const highCount = sevCounts['High']||0;
+
+  c.innerHTML=`
+  <div style="padding:16px 16px 100px">
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px">🎓 TrainIT — TNA Generator</div>
+    <div class="small" style="margin-bottom:16px">Auto-pulls hazard exposure from your FLAGIT observation history and generates a structured Training Needs Analysis report.</div>
+
+    ${totalObs===0?`<div class="card" style="border-left:3px solid var(--brand)"><div style="font-weight:600;margin-bottom:4px">No observations yet</div><div class="small">Log some HSE observations on the Feed first — the TNA uses your hazard history to recommend relevant training.</div></div>`:''}
+
+    <div class="card" style="margin-bottom:12px;border-left:3px solid #185fa5">
+      <div style="font-weight:600;margin-bottom:6px;font-size:13px;color:#185fa5">📊 Hazard Exposure from FLAGIT</div>
+      <div class="small"><b>${totalObs}</b> observations logged &nbsp;·&nbsp; <b>${critCount}</b> Critical &nbsp;·&nbsp; <b>${highCount}</b> High</div>
+      ${topCats?`<div class="small" style="margin-top:4px"><b>Top categories:</b> ${topCats}</div>`:''}
+    </div>
+
+    <div style="font-weight:700;margin-bottom:10px;font-size:14px">Project & Workforce Details</div>
+
+    <div class="field-label">Company / Project</div>
+    <input type="text" id="tna-company" value="${esc(companyLabel)}" placeholder="e.g. TASETI — R1181" style="margin-bottom:10px" />
+
+    <div class="field-label">Site / Location</div>
+    <input type="text" id="tna-site" placeholder="e.g. KEZAD ICAD III, Abu Dhabi" style="margin-bottom:10px" />
+
+    <div class="field-label">Type of work / scope</div>
+    <input type="text" id="tna-scope" placeholder="e.g. Underground utilities, excavation, lifting operations" style="margin-bottom:10px" />
+
+    <div class="field-label">Workforce size (approximate)</div>
+    <input type="number" id="tna-workforce" placeholder="e.g. 45" min="1" style="margin-bottom:10px" />
+
+    <div class="field-label">Key trades / disciplines on site</div>
+    <input type="text" id="tna-trades" placeholder="e.g. Civil engineers, pipe fitters, crane operators, labourers" style="margin-bottom:10px" />
+
+    <div class="field-label">Nationalities / language groups</div>
+    <input type="text" id="tna-nationalities" placeholder="e.g. Indian, Pakistani, Filipino, Egyptian" style="margin-bottom:10px" />
+
+    <div class="field-label">Average HSE experience level of workers</div>
+    <select id="tna-exp" style="margin-bottom:10px">
+      <option value="">— Select —</option>
+      <option value="Low (< 1 year)">Low (less than 1 year)</option>
+      <option value="Moderate (1–3 years)">Moderate (1–3 years)</option>
+      <option value="Experienced (3–7 years)">Experienced (3–7 years)</option>
+      <option value="Senior (7+ years)">Senior (7+ years)</option>
+      <option value="Mixed">Mixed levels</option>
+    </select>
+
+    <div class="field-label">Current training already in place (if any)</div>
+    <input type="text" id="tna-existing" placeholder="e.g. Induction, TBT, manual handling, fire safety" style="margin-bottom:10px" />
+
+    <div class="field-label">Upcoming high-risk activities (next 30 days)</div>
+    <input type="text" id="tna-upcoming" placeholder="e.g. Confined space entry, hot works, scaffold erection" style="margin-bottom:10px" />
+
+    <div class="field-label">Applicable regulatory framework</div>
+    <select id="tna-regs" style="margin-bottom:10px">
+      <option value="Dubai Municipality CoP / TG series">Dubai Municipality CoP / TG series</option>
+      <option value="ADOSH-SF CoP (Abu Dhabi)">ADOSH-SF CoP (Abu Dhabi)</option>
+      <option value="Both DM and ADOSH (multi-emirate project)">Both DM and ADOSH (multi-emirate project)</option>
+      <option value="Client-specific HSE standards">Client-specific HSE standards</option>
+    </select>
+
+    <div class="field-label">Client / Main contractor (optional)</div>
+    <input type="text" id="tna-client" placeholder="e.g. AD Ports / KEZAD Group" style="margin-bottom:10px" />
+
+    <div class="field-label">TNA prepared by</div>
+    <input type="text" id="tna-preparedby" value="${esc(currentUser?.user_metadata?.full_name||'')}" placeholder="Your name" style="margin-bottom:10px" />
+
+    <div class="field-label">TNA date</div>
+    <input type="date" id="tna-date" value="${today}" style="margin-bottom:10px" />
+
+    <div class="field-label">Review period</div>
+    <select id="tna-period" style="margin-bottom:10px">
+      <option value="Monthly">Monthly</option>
+      <option value="Quarterly" selected>Quarterly</option>
+      <option value="Bi-annually">Bi-annually</option>
+      <option value="Annually">Annually</option>
+    </select>
+
+    <div class="field-label">Additional notes / specific concerns (optional)</div>
+    <textarea id="tna-notes" rows="3" placeholder="Any specific incidents, near-misses, or areas of concern not captured in FLAGIT..." style="margin-bottom:16px"></textarea>
+
+    <div id="tna-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
+    <div id="tna-status" style="display:none;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:var(--text2)">
+      <div style="width:18px;height:18px;border:2px solid var(--brand);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+      Generating TNA report with AI...
+    </div>
+
+    <button class="btn btn-brand" style="width:100%;margin-bottom:8px" onclick="generateTNA()">🤖 Generate TNA Report with AI</button>
+
+    <div id="tna-output-section" style="display:none;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:15px">📄 Training Needs Analysis</div>
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="exportTNADocx()">⬇ Export Word</button>
+      </div>
+      <div id="tna-output" style="background:var(--surface2);border-radius:10px;padding:16px;font-size:13px;line-height:1.75;white-space:pre-wrap;border:1px solid var(--border)"></div>
+    </div>
+  </div>`;
+}
+
+async function generateTNA(){
+  const key = await getGeminiKey();
+  if(!key){ document.getElementById('tna-err').textContent='Groq API key not set up. Ask your admin to add it in Team settings.'; document.getElementById('tna-err').style.display='block'; return; }
+
+  const company   = document.getElementById('tna-company').value.trim();
+  const site      = document.getElementById('tna-site').value.trim();
+  const scope     = document.getElementById('tna-scope').value.trim();
+  const workforce = document.getElementById('tna-workforce').value.trim();
+  const trades    = document.getElementById('tna-trades').value.trim();
+  const nats      = document.getElementById('tna-nationalities').value.trim();
+  const exp       = document.getElementById('tna-exp').value;
+  const existing  = document.getElementById('tna-existing').value.trim();
+  const upcoming  = document.getElementById('tna-upcoming').value.trim();
+  const regs      = document.getElementById('tna-regs').value;
+  const client    = document.getElementById('tna-client').value.trim();
+  const prepBy    = document.getElementById('tna-preparedby').value.trim();
+  const tnaDate   = document.getElementById('tna-date').value;
+  const period    = document.getElementById('tna-period').value;
+  const notes     = document.getElementById('tna-notes').value.trim();
+
+  const errEl = document.getElementById('tna-err');
+  errEl.style.display='none';
+
+  if(!site||!scope||!workforce||!trades){
+    errEl.textContent='Please fill in Site, Scope of work, Workforce size, and Key trades — these are required.';
+    errEl.style.display='block';
+    return;
+  }
+
+  // Build hazard exposure context from observations
+  const catCounts={};
+  const sevCounts={};
+  const recentDescs=[];
+  observations.forEach(o=>{
+    catCounts[o.category]=(catCounts[o.category]||0)+1;
+    sevCounts[o.severity]=(sevCounts[o.severity]||0)+1;
+    if(o.severity==='Critical'||o.severity==='High') recentDescs.push(`[${o.severity}] ${o.category}: ${(o.description||'').slice(0,120)}`);
+  });
+  const catList = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`${k} (${v} obs.)`).join(', ');
+  const sevSummary = Object.entries(sevCounts).map(([k,v])=>`${k}: ${v}`).join(', ');
+  const critHighSnippets = recentDescs.slice(0,8).join('\n');
+
+  document.getElementById('tna-status').style.display='flex';
+  document.getElementById('tna-output-section').style.display='none';
+
+  try{
+    let groqModel='llama-4-scout-17b-16e-instruct';
+    try{
+      const mres=await fetch('https://api.groq.com/openai/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+      if(mres.ok){ const md=await mres.json(); const SKIP=/guard|embed|whisper|tts|vision|tool|distil|safeguard/i; const pick=(md.data||[]).find(m=>m.id&&!SKIP.test(m.id)); if(pick) groqModel=pick.id; }
+    }catch(_){}
+
+    const sysPrompt=`You are a senior UAE HSE adviser with deep expertise in construction safety training. Generate structured, professional Training Needs Analysis (TNA) reports referenced to UAE HSE regulations. Use clear section headings and actionable recommendations.`;
+
+    const userPrompt=`Generate a comprehensive Training Needs Analysis (TNA) report for the following construction project.
+
+PROJECT DETAILS:
+- Company / Project: ${company||'Not specified'}
+- Site / Location: ${site}
+- Scope of work: ${scope}
+- Workforce size: ${workforce} workers
+- Key trades / disciplines: ${trades}
+- Nationalities / language groups: ${nats||'Not specified'}
+- Average HSE experience level: ${exp||'Not specified'}
+- Client / Main contractor: ${client||'Not specified'}
+- Regulatory framework: ${regs}
+- TNA review period: ${period}
+- TNA prepared by: ${prepBy||'HSE Team'}
+- Date: ${tnaDate}
+
+CURRENT TRAINING IN PLACE:
+${existing||'None specified'}
+
+UPCOMING HIGH-RISK ACTIVITIES (next 30 days):
+${upcoming||'None specified'}
+
+HAZARD EXPOSURE FROM FLAGIT OBSERVATION SYSTEM (${observations.length} total observations):
+- By category: ${catList||'No observations yet'}
+- By severity: ${sevSummary||'No data'}
+${critHighSnippets?`\nRecent Critical/High observations:\n${critHighSnippets}`:''}
+
+${notes?`ADDITIONAL NOTES / CONCERNS:\n${notes}`:''}
+
+Generate the TNA with these sections:
+1. EXECUTIVE SUMMARY (2–3 sentences)
+2. HAZARD EXPOSURE ANALYSIS (draw from FLAGIT data above, identify top risk areas)
+3. TRAINING NEEDS — list 8–12 specific training courses/topics needed, each with:
+   • Course title
+   • Target group (which trades/all workers)
+   • Priority (Critical / High / Medium)
+   • Suggested duration
+   • Regulatory reference (${regs})
+   • Trigger/justification (link to FLAGIT observation data where relevant)
+4. RECOMMENDED TRAINING CALENDAR (monthly schedule for the review period)
+5. LANGUAGE & LITERACY CONSIDERATIONS (based on nationalities listed)
+6. RECORD-KEEPING REQUIREMENTS (what records to maintain per UAE HSE requirements)
+7. TNA REVIEW & UPDATE TRIGGERS (conditions that should prompt a TNA update)
+
+Format clearly with section headers in CAPITALS. Be specific and practical. Reference actual UAE HSE regulatory documents where applicable.`;
+
+    const controller=new AbortController();
+    const aiTimeout=setTimeout(()=>controller.abort(),60000);
+    const res=await fetch(getGroqUrl(),{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      signal:controller.signal,
+      body:JSON.stringify({model:groqModel,max_tokens:2000,messages:[{role:'system',content:sysPrompt},{role:'user',content:userPrompt}]})
+    });
+    clearTimeout(aiTimeout);
+    const data=await res.json();
+    if(!res.ok) throw new Error(data?.error?.message||'AI request failed.');
+    const text=data?.choices?.[0]?.message?.content?.trim();
+    if(!text) throw new Error('No response from AI.');
+
+    tnaResult={
+      text, company, site, scope, workforce, trades, nats, exp, existing,
+      upcoming, regs, client, prepBy, tnaDate, period, notes,
+      obsCount:observations.length, catList, sevSummary, critHighSnippets
+    };
+
+    document.getElementById('tna-output').textContent=text;
+    document.getElementById('tna-output-section').style.display='block';
+    document.getElementById('tna-output-section').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(err){
+    const msg=err.name==='AbortError'?'AI timed out (60s). The report is long — please try again.':(err.message||'Could not reach FLAGIT AI.');
+    errEl.textContent=msg;
+    errEl.style.display='block';
+  }finally{
+    document.getElementById('tna-status').style.display='none';
+  }
+}
+
+async function exportTNADocx(){
+  if(!tnaResult){ alert('Generate a TNA report first.'); return; }
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageOrientation } = window.docx;
+  const r = tnaResult;
+
+  const lines = r.text.split('\n');
+  const paras = [];
+
+  // Cover page header
+  paras.push(new Paragraph({ children:[new TextRun({text:'TRAINING NEEDS ANALYSIS REPORT',bold:true,size:36,color:'1A3A5C',font:'Arial'})], alignment:AlignmentType.CENTER, spacing:{after:200} }));
+  paras.push(new Paragraph({ children:[new TextRun({text:r.company||r.site,bold:true,size:28,font:'Arial'})], alignment:AlignmentType.CENTER, spacing:{after:120} }));
+  paras.push(new Paragraph({ children:[new TextRun({text:`Site: ${r.site}  |  Prepared by: ${r.prepBy||'HSE Team'}  |  Date: ${r.tnaDate}`,size:20,color:'666666',font:'Arial'})], alignment:AlignmentType.CENTER, spacing:{after:120} }));
+  paras.push(new Paragraph({ children:[new TextRun({text:`Regulatory Framework: ${r.regs}  |  Review Period: ${r.period}`,size:20,color:'666666',font:'Arial'})], alignment:AlignmentType.CENTER, spacing:{after:400} }));
+
+  // FLAGIT data summary box
+  paras.push(new Paragraph({ children:[new TextRun({text:'FLAGIT Hazard Exposure Summary',bold:true,size:22,color:'185fa5',font:'Arial'})], spacing:{before:200,after:80} }));
+  paras.push(new Paragraph({ children:[new TextRun({text:`Total observations: ${r.obsCount}  |  By severity: ${r.sevSummary||'—'}`,size:20,font:'Arial'})], spacing:{after:80} }));
+  if(r.catList) paras.push(new Paragraph({ children:[new TextRun({text:`Top hazard categories: ${r.catList}`,size:20,font:'Arial'})], spacing:{after:200} }));
+
+  // Parse the AI text into paragraphs
+  lines.forEach(line=>{
+    const trimmed=line.trim();
+    if(!trimmed){ paras.push(new Paragraph({spacing:{after:60}})); return; }
+    // Section headings (ALL CAPS lines)
+    if(trimmed===trimmed.toUpperCase()&&trimmed.length>3&&/[A-Z]{3}/.test(trimmed)){
+      paras.push(new Paragraph({ children:[new TextRun({text:trimmed,bold:true,size:24,color:'1A3A5C',font:'Arial'})], spacing:{before:300,after:100} }));
+    } else if(trimmed.startsWith('•')||trimmed.startsWith('-')){
+      paras.push(new Paragraph({ children:[new TextRun({text:trimmed.replace(/^[•\-]\s*/,''),size:20,font:'Arial'})], bullet:{level:0}, spacing:{after:60} }));
+    } else {
+      paras.push(new Paragraph({ children:[new TextRun({text:trimmed,size:20,font:'Arial'})], spacing:{after:80} }));
+    }
+  });
+
+  const doc=new Document({
+    creator:'FLAGIT TrainIT',
+    title:`TNA — ${r.company||r.site} — ${r.tnaDate}`,
+    sections:[{
+      properties:{},
+      children:paras
+    }],
+    styles:{default:{document:{run:{font:'Arial',size:20}}}}
+  });
+
+  const blob=await Packer.toBlob(doc);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`TNA_${(r.company||r.site).replace(/[^a-zA-Z0-9]/g,'_')}_${r.tnaDate}.docx`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── OWNER DASHBOARD ──────────────────────────────────
