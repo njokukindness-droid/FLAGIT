@@ -149,8 +149,10 @@ button{cursor:pointer}
           <input type="text" id="su-name" placeholder="e.g. John Smith" style="margin-bottom:12px" />
           <label class="field-label">Role / Job title</label>
           <input type="text" id="su-role" placeholder="e.g. HSE Officer" style="margin-bottom:12px" />
-          <label class="field-label">Project / Organisation name</label>
-          <input type="text" id="su-project" placeholder="e.g. ACME Construction" style="margin-bottom:12px" />
+          <label class="field-label">Company / Organisation name</label>
+          <input type="text" id="su-company" placeholder="e.g. TASETI Construction" style="margin-bottom:12px" />
+          <label class="field-label">Project name / reference</label>
+          <input type="text" id="su-project" placeholder="e.g. R1181 or Palm Tower Phase 2" style="margin-bottom:12px" />
           <label class="field-label">Email address</label>
           <input type="email" id="su-email" placeholder="your@email.com" style="margin-bottom:12px" />
           <label class="field-label">Password</label>
@@ -598,6 +600,7 @@ async function startSignIn(){
 async function startSignUp(){
   hideBox('auth-err'); hideBox('auth-ok');
   if(!db) return showError('auth-err','Connection error. Please refresh.');
+  const companyName=document.getElementById('su-company').value.trim();
   const projectName=document.getElementById('su-project').value.trim();
   const email=document.getElementById('su-email').value.trim().toLowerCase();
   const fullName=document.getElementById('su-name').value.trim();
@@ -605,16 +608,17 @@ async function startSignUp(){
   const password=document.getElementById('su-pass').value;
   if(!fullName) return showError('auth-err','Please enter your full name.');
   if(!roleTitle) return showError('auth-err','Please enter your role.');
-  if(!projectName) return showError('auth-err','Please enter your project / organisation name.');
+  if(!companyName) return showError('auth-err','Please enter your company / organisation name.');
+  if(!projectName) return showError('auth-err','Please enter the project name or reference.');
   if(!email) return showError('auth-err','Please enter your email address.');
   if(!password||password.length<8) return showError('auth-err','Password must be at least 8 characters.');
   setAuthBusy(true,'signup-btn','Create account','Creating...');
   try{
-    const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName}}});
+    const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:fullName,role_title:roleTitle,pending_project_name:projectName,pending_company_name:companyName}}});
     if(error) throw error;
     if(data.user&&data.session){
       currentUser=data.user;
-      pendingAuth={email,projectName,fullName,roleTitle,mode:'signup'};
+      pendingAuth={email,projectName,companyName,fullName,roleTitle,mode:'signup'};
       await postVerifyBootstrap();
     } else {
       showSuccess('auth-ok','Account created! Check your email to confirm your address, then sign in.');
@@ -670,10 +674,11 @@ async function postVerifyBootstrap(){
   const fullName=pendingAuth?.fullName||user.user_metadata?.full_name||user.email;
   const roleTitle=pendingAuth?.roleTitle||user.user_metadata?.role_title||'Team member';
   const projectName=pendingAuth?.projectName||user.user_metadata?.pending_project_name||'';
+  const companyName=pendingAuth?.companyName||user.user_metadata?.pending_company_name||'';
   await db.from('profiles').upsert({id:user.id,email:user.email,full_name:fullName,role_title:roleTitle,updated_at:new Date().toISOString()});
   let project=null;
   if(projectName){
-    project=await getOrCreateProject(projectName,true);
+    project=await getOrCreateProject(projectName,companyName,true);
     if(project){ await ensureMembership(project,fullName,roleTitle,true); localStorage.setItem(`flagit:lastProject:${user.id}`,project.id); }
   }
   await hydrateUserAndProjects();
@@ -696,13 +701,15 @@ async function enterProject(){
   if(navigator.onLine) syncOfflineObservations();
 }
 
-async function getOrCreateProject(projectName,allowCreate){
+async function getOrCreateProject(projectName,companyName,allowCreate){
   const slug=slugify(projectName);
   let {data,error}=await db.from('projects').select('*').eq('slug',slug).maybeSingle();
   if(error&&error.code!=='PGRST116') throw error;
   if(data) return data;
   if(!allowCreate) return null;
-  const ins=await db.from('projects').insert({name:projectName,slug,created_by:currentUser.id}).select('*').single();
+  const insertPayload={name:projectName,slug,created_by:currentUser.id};
+  if(companyName) insertPayload.org_name=companyName;
+  const ins=await db.from('projects').insert(insertPayload).select('*').single();
   if(ins.error){ const retry=await db.from('projects').select('*').eq('slug',slug).maybeSingle(); if(retry.data) return retry.data; throw ins.error; }
   return ins.data;
 }
@@ -735,7 +742,8 @@ async function startApp(projectId){
 }
 
 function renderTopBar(){
-  document.getElementById('top-project-pill').textContent=currentProject?.name||'No project';
+  const _pillLabel=currentProject?.org_name?`${currentProject.org_name} — ${currentProject.name}`:(currentProject?.name||'No project');
+  document.getElementById('top-project-pill').textContent=_pillLabel;
   const adminBadge=isAdmin()?`<span class="admin-badge">Admin</span>`:'';
   document.getElementById('user-badge').innerHTML=`
     ${avatarHTML(currentProject?.full_name||currentUser?.email||'U')}
@@ -746,7 +754,7 @@ function renderTopBar(){
   const installBtn=document.getElementById('install-flagit-btn');
   if(installBtn&&deferredPrompt) installBtn.classList.remove('hidden');
   const pill=document.getElementById('top-project-pill');
-  if(myProjects.length>1){ pill.style.cursor='pointer'; pill.onclick=toggleProjectSwitcher; pill.title='Click to switch project'; pill.innerHTML=`${esc(currentProject?.name||'No project')} ▾`; }
+  if(myProjects.length>1){ pill.style.cursor='pointer'; pill.onclick=toggleProjectSwitcher; pill.title='Click to switch project'; pill.innerHTML=`${esc(_pillLabel)} ▾`; }
   // Show/hide Team tab based on role
   document.getElementById('nav-members').style.display='flex';
   // Show Reports tab for admins only
@@ -2971,7 +2979,8 @@ async function openOwnerDashboard(){
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-size:16px;font-weight:700;margin-bottom:12px">Create New Project</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <input type="text" id="new-project-name" placeholder="Organisation / Project name" style="flex:1;min-width:200px" />
+        <input type="text" id="new-company-name" placeholder="Company / Organisation (e.g. TASETI)" style="flex:1;min-width:200px" />
+        <input type="text" id="new-project-name" placeholder="Project name / reference (e.g. R1181)" style="flex:1;min-width:200px" />
         <input type="email" id="new-admin-email" placeholder="Admin email address" style="flex:1;min-width:200px" />
         <input type="text" id="new-admin-role" placeholder="Admin role title" style="flex:1;min-width:160px" />
         <button class="btn btn-brand" onclick="ownerCreateProject()">Create & Invite Admin</button>
@@ -3019,22 +3028,23 @@ async function loadOwnerContent(){
 }
 
 async function ownerCreateProject(){
+  const company=document.getElementById('new-company-name').value.trim();
   const name=document.getElementById('new-project-name').value.trim();
   const email=document.getElementById('new-admin-email').value.trim().toLowerCase();
   const role=document.getElementById('new-admin-role').value.trim();
   const msg=document.getElementById('owner-create-msg');
-  if(!name||!email||!role){ msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='All fields are required.'; return; }
+  if(!company||!name||!email||!role){ msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='All fields are required.'; return; }
   msg.style.display='block'; msg.style.color='var(--text2)'; msg.textContent='Creating project...';
   try{
     const slug=name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
-    const {data:proj,error:pErr}=await db.from('projects').insert({name,slug}).select('*').single();
+    const {data:proj,error:pErr}=await db.from('projects').insert({name,slug,org_name:company}).select('*').single();
     if(pErr) throw pErr;
     const {error:iErr}=await db.from('invites').insert({email,project_id:proj.id,role,status:'pending',invited_by:null});
     if(iErr) throw iErr;
     // Send password setup email
     await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
-    msg.style.color='var(--green)'; msg.textContent=`✅ Project "${name}" created! Password setup email sent to ${email}.`;
-    document.getElementById('new-project-name').value=''; document.getElementById('new-admin-email').value=''; document.getElementById('new-admin-role').value='';
+    msg.style.color='var(--green)'; msg.textContent=`✅ Project "${company} — ${name}" created! Password setup email sent to ${email}.`;
+    document.getElementById('new-company-name').value=''; document.getElementById('new-project-name').value=''; document.getElementById('new-admin-email').value=''; document.getElementById('new-admin-role').value='';
     await loadOwnerContent();
   }catch(err){ msg.style.color='var(--red)'; msg.textContent='Error: '+err.message; }
 }
