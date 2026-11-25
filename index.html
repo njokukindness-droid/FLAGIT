@@ -3151,19 +3151,129 @@ function renderTrainItRegister(){
     </div>`;
 }
 
+// Map observation categories → suggested training topics with priority logic
+function deriveTrainingTopicsFromObservations(){
+  // Category → training topic mapping
+  const CAT_TO_TOPIC = {
+    'PPE / Personal Protective Equipment': { topic:'PPE General & Correct Usage', ext:'Working at Height' },
+    'Housekeeping': { topic:'Housekeeping & Waste Management', ext:null },
+    'Electrical Safety': { topic:'Electrical Safety Awareness', ext:'Electrical Safety (Authorised)' },
+    'Excavation / Earthworks': { topic:'Excavation Safety & Cave-in Prevention', ext:'Confined Space Awareness & Rescue' },
+    'Working at Height': { topic:'Working at Height Safety', ext:'Working at Height' },
+    'Lifting Operations': { topic:'Safe Lifting & Rigging Operations', ext:'Lifting Supervisor' },
+    'Fire Safety': { topic:'Fire Prevention & Extinguisher Use', ext:'Fire Warden / Fire Fighting' },
+    'Manual Handling': { topic:'Manual Handling & Ergonomics', ext:null },
+    'Confined Space': { topic:'Confined Space Awareness & Entry', ext:'Confined Space Awareness & Rescue' },
+    'Chemical / Hazardous Substances': { topic:'COSHH / Hazardous Substances Handling', ext:null },
+    'Scaffolding': { topic:'Scaffolding Safety & Inspection', ext:'Scaffolding Inspection' },
+    'Traffic / Mobile Plant': { topic:'Traffic Management & Plant Safety', ext:'Banksman / Slinger / Rigger' },
+    'Near Miss / Incident': { topic:'Accident Reporting & Near Miss Investigation', ext:'Task Risk Assessment (TRA)' },
+    'Emergency / First Aid': { topic:'Emergency Response & First Aid Awareness', ext:'First Aid / Basic Life Support' },
+    'Hot Works / Welding': { topic:'Hot Works Permit & Fire Watch', ext:'Fire Warden / Fire Fighting' },
+    'Heat Stress': { topic:'Heat Stress Prevention & Heat Illness', ext:null },
+    'Environmental': { topic:'Environmental Awareness & Spill Prevention', ext:null },
+    'Unsafe Act': { topic:'Behavioural Safety & Unsafe Act Reporting', ext:null },
+    'Unsafe Condition': { topic:'Hazard Identification & Risk Assessment', ext:'Task Risk Assessment (TRA)' },
+    'Tools & Equipment': { topic:'Safe Use of Tools & Equipment', ext:null },
+    'Permit to Work': { topic:'Permit to Work (PTW) System', ext:'Permit to Work (PTW) Issuer' },
+  };
+
+  // Tally by category and severity
+  const catData = {};
+  observations.forEach(o=>{
+    const cat = o.category||'Uncategorised';
+    if(!catData[cat]) catData[cat]={ total:0, critical:0, high:0, medium:0, low:0, descs:[] };
+    catData[cat].total++;
+    if(o.severity==='Critical') catData[cat].critical++;
+    else if(o.severity==='High') catData[cat].high++;
+    else if(o.severity==='Medium') catData[cat].medium++;
+    else catData[cat].low++;
+    if((o.severity==='Critical'||o.severity==='High') && catData[cat].descs.length<2)
+      catData[cat].descs.push((o.description||'').slice(0,100));
+  });
+
+  // Build proposed topics list
+  const proposed = [];
+  const seen = new Set();
+
+  Object.entries(catData).sort((a,b)=>{
+    // Sort: critical first, then high, then by total count
+    const scoreA = a[1].critical*4 + a[1].high*2 + a[1].medium;
+    const scoreB = b[1].critical*4 + b[1].high*2 + b[1].medium;
+    return scoreB - scoreA;
+  }).forEach(([cat, d])=>{
+    const mapped = CAT_TO_TOPIC[cat];
+    const topicName = mapped?.topic || `${cat} Safety Awareness`;
+    const extTopic  = mapped?.ext || null;
+
+    // Priority
+    let priority = 'Medium';
+    if(d.critical>0) priority = 'Critical';
+    else if(d.high>0) priority = 'High';
+
+    // Justification
+    const justification = `${d.total} observation${d.total>1?'s':''} logged under "${cat}"${d.critical?` including ${d.critical} Critical`:''}${d.high?` and ${d.high} High severity`:''}`;
+
+    if(!seen.has(topicName)){
+      seen.add(topicName);
+      proposed.push({ topic:topicName, type:'internal', priority, cat, justification, checked:true });
+    }
+    if(extTopic && (d.critical>0||d.high>0) && !seen.has(extTopic)){
+      seen.add(extTopic);
+      proposed.push({ topic:extTopic, type:'external', priority:'High', cat, justification:`Recommended external certification triggered by ${d.critical+d.high} Critical/High observations in "${cat}"`, checked:false });
+    }
+  });
+
+  // Always include induction if not already in training records
+  const inductionDone = trainingRecords.some(r=>r.topic.toLowerCase().includes('induction')&&r.status==='C');
+  if(!inductionDone && !seen.has('HSE Induction')){
+    proposed.unshift({ topic:'HSE Induction', type:'internal', priority:'Critical', cat:'General', justification:'Mandatory for all site personnel before commencing work', checked:true });
+  }
+
+  return proposed;
+}
+
 function renderTNAForm(){
   const companyLabel = currentProject?.org_name ? `${currentProject.org_name} — ${currentProject.name}` : (currentProject?.name||'');
   const today = new Date().toISOString().split('T')[0];
-  const catCounts={};const sevCounts={};
-  observations.forEach(o=>{ catCounts[o.category]=(catCounts[o.category]||0)+1; sevCounts[o.severity]=(sevCounts[o.severity]||0)+1; });
-  const topCats=Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>`${k} (${v})`).join(', ');
-  const totalObs=observations.length; const critCount=sevCounts['Critical']||0; const highCount=sevCounts['High']||0;
+  const totalObs = observations.length;
+
+  // Derive topics from observations
+  const proposed = deriveTrainingTopicsFromObservations();
+  const priorityColor = { Critical:'#c0392b', High:'#e67e22', Medium:'#2980b9' };
+  const priorityBg    = { Critical:'#fdf3f2', High:'#fef9f0', Medium:'#f0f6fe' };
+
+  const topicRows = proposed.map((p,i)=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="tna-topic-${i}" ${p.checked?'checked':''} style="margin-top:3px;width:18px;height:18px;accent-color:var(--brand);flex-shrink:0" />
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+          <span style="font-weight:600;font-size:14px">${esc(p.topic)}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:${priorityBg[p.priority]||'#f5f5f5'};color:${priorityColor[p.priority]||'#555'}">${p.priority}</span>
+          <span style="font-size:11px;padding:2px 7px;border-radius:999px;background:var(--surface2);color:var(--text2)">${p.type==='external'?'External cert':'Internal TBT'}</span>
+        </div>
+        <div class="small" style="color:var(--text2)">${esc(p.justification)}</div>
+      </div>
+    </div>`).join('');
+
+  const noObsNote = totalObs===0 ? `<div class="card" style="border-left:3px solid #e67e22;margin-bottom:14px"><div style="font-weight:600;margin-bottom:4px">No observations in FLAGIT yet</div><div class="small">The topics below are baseline recommendations. As you log HSE observations, this list will update to reflect your actual site hazard exposure.</div></div>` : '';
+
   return `
-    <div class="card" style="margin-bottom:12px;border-left:3px solid #185fa5">
-      <div style="font-weight:600;margin-bottom:6px;font-size:13px;color:#185fa5">📊 Hazard Exposure from FLAGIT</div>
-      <div class="small"><b>${totalObs}</b> observations &nbsp;·&nbsp; <b>${critCount}</b> Critical &nbsp;·&nbsp; <b>${highCount}</b> High</div>
-      ${topCats?`<div class="small" style="margin-top:4px"><b>Top categories:</b> ${topCats}</div>`:'<div class="small" style="margin-top:4px">No observations yet — TNA will be generated from form data only.</div>'}
+    ${noObsNote}
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">📋 Training Topics — from FLAGIT scan</div>
+        <div class="small" style="color:var(--text2)">${totalObs} obs. scanned</div>
+      </div>
+      <div class="small" style="color:var(--text2);margin-bottom:10px">Tick the topics you want included in the TNA. Add extras below.</div>
+      ${proposed.length ? topicRows : '<div class="small">No observations to scan yet — add topics manually below.</div>'}
+      <div style="margin-top:12px">
+        <div class="field-label">Add extra topics (comma-separated)</div>
+        <input type="text" id="tna-extra-topics" placeholder="e.g. Heat Stress, Permit to Work, Emergency Drill" style="margin-bottom:0" />
+      </div>
     </div>
+
+    <div style="font-weight:700;font-size:14px;margin-bottom:10px">Project Details</div>
     <div class="field-label">Company / Project</div>
     <input type="text" id="tna-company" value="${esc(companyLabel)}" placeholder="e.g. TASETI — R1181" style="margin-bottom:10px" />
     <div class="field-label">Site / Location</div>
@@ -3216,7 +3326,7 @@ function renderTNAForm(){
       <div style="width:18px;height:18px;border:2px solid var(--brand);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
       Generating TNA report with AI...
     </div>
-    <button class="btn btn-brand" style="width:100%;margin-bottom:8px" onclick="generateTNA()">🤖 Generate TNA Report with AI</button>
+    <button class="btn btn-brand" style="width:100%;margin-bottom:8px" onclick="generateTNA(${proposed.length})">🤖 Generate TNA Report with AI</button>
     <div id="tna-output-section" style="display:none;margin-top:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-weight:700;font-size:15px">📄 Training Needs Analysis</div>
@@ -3379,9 +3489,24 @@ async function exportTrainingMatrix(){
   finally{ document.getElementById('progress-overlay').style.display='none'; }
 }
 
-async function generateTNA(){
+async function generateTNA(topicCount){
   const key = await getGeminiKey();
   if(!key){ document.getElementById('tna-err').textContent='Groq API key not set up. Ask your admin to add it in Team settings.'; document.getElementById('tna-err').style.display='block'; return; }
+
+  // Collect confirmed topics from checkboxes
+  const confirmedTopics = [];
+  const n = topicCount || 0;
+  for(let i=0;i<n;i++){
+    const cb = document.getElementById(`tna-topic-${i}`);
+    if(cb && cb.checked){
+      const label = cb.closest('div[style]')?.querySelector('span[style*="font-weight:600"]')?.textContent?.trim();
+      const typeBadge = cb.closest('div[style]')?.querySelectorAll('span')[2]?.textContent?.trim();
+      if(label) confirmedTopics.push({ topic: label, type: typeBadge||'' });
+    }
+  }
+  // Add any manually-typed extras
+  const extraRaw = (document.getElementById('tna-extra-topics')?.value||'').trim();
+  if(extraRaw) extraRaw.split(',').forEach(t=>{ const s=t.trim(); if(s) confirmedTopics.push({ topic:s, type:'Manual addition' }); });
 
   const company   = document.getElementById('tna-company').value.trim();
   const site      = document.getElementById('tna-site').value.trim();
@@ -3460,12 +3585,15 @@ HAZARD EXPOSURE FROM FLAGIT OBSERVATION SYSTEM (${observations.length} total obs
 - By severity: ${sevSummary||'No data'}
 ${critHighSnippets?`\nRecent Critical/High observations:\n${critHighSnippets}`:''}
 
+${confirmedTopics.length?`REQUIRED TRAINING TOPICS (confirmed by HSE officer from FLAGIT observation scan — MUST all appear in Section 3):
+${confirmedTopics.map((t,i)=>`${i+1}. ${t.topic}${t.type?` [${t.type}]`:''}`).join('\n')}`:''}
+
 ${notes?`ADDITIONAL NOTES / CONCERNS:\n${notes}`:''}
 
 Generate the TNA with these sections:
 1. EXECUTIVE SUMMARY (2–3 sentences)
 2. HAZARD EXPOSURE ANALYSIS (draw from FLAGIT data above, identify top risk areas)
-3. TRAINING NEEDS — list 8–12 specific training courses/topics needed, each with:
+3. TRAINING NEEDS — include ALL topics listed in REQUIRED TRAINING TOPICS above, plus any additional topics your analysis identifies. For each topic provide:
    • Course title
    • Target group (which trades/all workers)
    • Priority (Critical / High / Medium)
