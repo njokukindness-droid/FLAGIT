@@ -3242,9 +3242,10 @@ function renderTrainItRegister(){
   }).join('');
 
   return `
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="btn btn-brand" style="flex:1;padding:11px" onclick="showAddWorkerModal()">+ Add Worker</button>
-      <button class="btn btn-ghost" style="flex:1;padding:11px" onclick="exportTrainingMatrix()">⬇ Export Excel</button>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-brand" style="flex:1;padding:11px;min-width:120px" onclick="showAddWorkerModal()">+ Add Worker</button>
+      <button class="btn btn-ghost" style="flex:1;padding:11px;min-width:120px" onclick="showBulkImportModal()">⬆ Bulk Import</button>
+      <button class="btn btn-ghost" style="flex:1;padding:11px;min-width:120px" onclick="exportTrainingMatrix()">⬇ Export Excel</button>
     </div>
     ${!trainingWorkers.length?`<div class="card"><div style="font-weight:600;margin-bottom:4px">No workers yet</div><div class="small">Tap "Add Worker" to add personnel to this project's training register.</div></div>`:''}
     ${workerRows}
@@ -3263,6 +3264,51 @@ function renderTrainItRegister(){
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('add-worker-modal').style.display='none'">Cancel</button>
           <button class="btn btn-brand" style="flex:1" onclick="saveWorker()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Import Modal -->
+    <div id="bulk-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-weight:700;font-size:16px">Bulk Import Workers</div>
+          <button class="btn btn-ghost" style="padding:6px 10px" onclick="document.getElementById('bulk-import-modal').style.display='none'">✕</button>
+        </div>
+        <div class="small" style="color:var(--text2);margin-bottom:14px">Upload a CSV or paste data with columns: Name, Role/Designation, Group</div>
+
+        <!-- Step 1: upload or paste -->
+        <div id="bi-step1">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <label class="btn btn-brand" style="flex:1;padding:11px;text-align:center;cursor:pointer">
+              📂 Upload CSV
+              <input type="file" accept=".csv,.txt" style="display:none" onchange="bulkImportFileLoad(this)" />
+            </label>
+            <button class="btn btn-ghost" style="flex:1;padding:11px" onclick="downloadWorkerTemplate()">⬇ Download Template</button>
+          </div>
+          <div class="field-label">— or paste rows directly —</div>
+          <textarea id="bi-paste" rows="8" placeholder="Name, Role / Designation, Group&#10;Muhammad Yaqoob, Foreman, Foremen&#10;Rahul Singh, Helper, Helpers&#10;..." style="margin-bottom:10px;font-family:monospace;font-size:12px"></textarea>
+          <div id="bi-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px"></div>
+          <button class="btn btn-brand" style="width:100%;padding:11px" onclick="bulkImportPreview()">Preview →</button>
+        </div>
+
+        <!-- Step 2: preview table -->
+        <div id="bi-step2" style="display:none">
+          <div id="bi-preview-info" style="font-size:13px;font-weight:600;margin-bottom:10px"></div>
+          <div id="bi-preview-table" style="overflow-x:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;max-height:300px;overflow-y:auto"></div>
+          <div id="bi-import-err" style="display:none;color:var(--red);font-size:13px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" style="flex:1;padding:11px" onclick="bulkImportBack()">← Back</button>
+            <button class="btn btn-brand" style="flex:1;padding:11px" id="bi-confirm-btn" onclick="bulkImportConfirm()">✅ Import All</button>
+          </div>
+        </div>
+
+        <!-- Step 3: done -->
+        <div id="bi-step3" style="display:none;text-align:center;padding:20px 0">
+          <div style="font-size:40px;margin-bottom:10px">✅</div>
+          <div id="bi-done-msg" style="font-weight:700;font-size:15px;margin-bottom:6px"></div>
+          <div class="small" style="color:var(--text2);margin-bottom:16px">Workers are now in your TrainIT register.</div>
+          <button class="btn btn-brand" style="padding:11px 24px" onclick="document.getElementById('bulk-import-modal').style.display='none';trainitLoaded=false;renderContent()">View Register</button>
         </div>
       </div>
     </div>
@@ -3517,6 +3563,131 @@ async function saveWorker(){
   if(error){ errEl.textContent='Error: '+error.message; errEl.style.display='block'; return; }
   document.getElementById('add-worker-modal').style.display='none';
   await loadTrainItData(); renderContent();
+}
+
+// ── BULK IMPORT ───────────────────────────────────────────────
+let _bulkRows = [];
+
+function showBulkImportModal(){
+  _bulkRows = [];
+  document.getElementById('bi-step1').style.display='block';
+  document.getElementById('bi-step2').style.display='none';
+  document.getElementById('bi-step3').style.display='none';
+  document.getElementById('bi-paste').value='';
+  document.getElementById('bi-err').style.display='none';
+  document.getElementById('bi-import-err').style.display='none';
+  document.getElementById('bulk-import-modal').style.display='flex';
+}
+
+function downloadWorkerTemplate(){
+  const csv = 'Name,Role / Designation,Group\nMuhammad Yaqoob,Foreman,Foremen\nRahul Singh,Helper,Helpers\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'TrainIT_Worker_Import_Template.csv';
+  a.click();
+}
+
+function bulkImportFileLoad(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bi-paste').value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function parseBulkCSV(raw){
+  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const rows = [];
+  const errors = [];
+  lines.forEach((line, i) => {
+    // Skip header row if present
+    if(i===0 && /name/i.test(line.split(',')[0])) return;
+    // Support comma or tab separated
+    const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+    const name = (parts[0]||'').trim();
+    const role = (parts[1]||'').trim();
+    const group = (parts[2]||'Main Workforce').trim();
+    if(!name){ errors.push(`Row ${i+1}: missing name`); return; }
+    if(!role){ errors.push(`Row ${i+1}: missing role for "${name}"`); return; }
+    rows.push({ name, role, group });
+  });
+  return { rows, errors };
+}
+
+function bulkImportPreview(){
+  const raw = document.getElementById('bi-paste').value.trim();
+  const errEl = document.getElementById('bi-err');
+  if(!raw){ errEl.textContent='Please upload a file or paste some data first.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  const { rows, errors } = parseBulkCSV(raw);
+  if(!rows.length){ errEl.textContent='No valid rows found. ' + (errors[0]||''); errEl.style.display='block'; return; }
+
+  _bulkRows = rows;
+
+  // Build preview table
+  const tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">#</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Name</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Role</th>
+      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)">Group</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr style="${i%2===0?'':'background:var(--surface2)'}">
+      <td style="padding:7px 10px;color:var(--text2)">${i+1}</td>
+      <td style="padding:7px 10px;font-weight:600">${esc(r.name)}</td>
+      <td style="padding:7px 10px">${esc(r.role)}</td>
+      <td style="padding:7px 10px">${esc(r.group)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+
+  document.getElementById('bi-preview-table').innerHTML = tableHtml;
+  document.getElementById('bi-preview-info').textContent = `${rows.length} worker${rows.length!==1?'s':''} ready to import${errors.length?` · ${errors.length} row(s) skipped`:''}`;
+  document.getElementById('bi-step1').style.display='none';
+  document.getElementById('bi-step2').style.display='block';
+}
+
+function bulkImportBack(){
+  document.getElementById('bi-step2').style.display='none';
+  document.getElementById('bi-step1').style.display='block';
+}
+
+async function bulkImportConfirm(){
+  if(!_bulkRows.length) return;
+  const btn = document.getElementById('bi-confirm-btn');
+  const errEl = document.getElementById('bi-import-err');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  errEl.style.display='none';
+
+  const payload = _bulkRows.map(r=>({
+    project_id:       currentProject.id,
+    name:             r.name,
+    role_designation: r.role,
+    group_name:       r.group,
+    created_by:       currentUser.id,
+  }));
+
+  // Insert in batches of 25
+  let inserted = 0, failed = 0;
+  for(let i=0; i<payload.length; i+=25){
+    const { data, error } = await db.from('training_workers').insert(payload.slice(i,i+25)).select('id');
+    if(error){ failed += Math.min(25, payload.length-i); }
+    else { inserted += data.length; }
+  }
+
+  btn.disabled=false; btn.textContent='✅ Import All';
+
+  if(inserted===0){
+    errEl.textContent='Import failed — check for duplicate names or a database error.';
+    errEl.style.display='block'; return;
+  }
+
+  document.getElementById('bi-done-msg').textContent =
+    `${inserted} worker${inserted!==1?'s':''} imported successfully${failed?` (${failed} failed)`:''}.`;
+  document.getElementById('bi-step2').style.display='none';
+  document.getElementById('bi-step3').style.display='block';
+  await loadTrainItData();
 }
 
 async function saveTrainingRecord(){
