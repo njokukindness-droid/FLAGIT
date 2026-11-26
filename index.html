@@ -1135,18 +1135,32 @@ function closeDetail(){ selectedObservation=null; renderContent(); }
 async function exportNCRById(obsId){
   const obs = observations.find(o=>o.id===obsId) || selectedObservation;
   if(!obs){ alert('Observation not found.'); return; }
+
+  // Fetch photos, signatures and logo in parallel
   const photos = obs.observation_photos || [];
-  const photoUrls = await Promise.all(photos.map(p=>getSignedUrl(p.file_path)));
-  exportNCR(obs, photoUrls.filter(Boolean));
+  const [photoUrls, sigsRes, projRes] = await Promise.all([
+    Promise.all(photos.map(p=>getSignedUrl(p.file_path))),
+    db.from('project_settings').select('key,value').eq('project_id', currentProject.id).in('key',['sig_prepared_by','sig_submitted_to']),
+    db.from('projects').select('logo_url').eq('id', currentProject.id).single()
+  ]);
+
+  const sigs = {};
+  (sigsRes.data||[]).forEach(r=>{ sigs[r.key]=r.value; });
+  const logoUrl = projRes.data?.logo_url || '';
+
+  exportNCR(obs, photoUrls.filter(Boolean), sigs, logoUrl);
 }
 
-function exportNCR(obs, photoUrls){
+function exportNCR(obs, photoUrls, sigs={}, logoUrl=''){
   const proj   = currentProject;
   const company = proj?.org_name || proj?.name || '';
   const projName = proj?.name || '';
   const ncrRef  = obs.ncr_ref || `NCR-${(obs.id||'').toString().slice(-6).toUpperCase()}`;
   const issuedDate = new Date(obs.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   const today   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+
+  const sigPreparedBy  = sigs['sig_prepared_by']  || '';
+  const sigSubmittedTo = sigs['sig_submitted_to'] || '';
 
   const sevColor = { Critical:'#c0392b', High:'#e67e22', Medium:'#2980b9', Low:'#27ae60' }[obs.severity] || '#555';
 
@@ -1196,9 +1210,12 @@ function exportNCR(obs, photoUrls){
 
   <!-- HEADER -->
   <div class="header-band">
-    <div>
-      <div class="title">NON-CONFORMANCE REPORT</div>
-      <div class="sub">${company}${projName&&company?' — ':' '}${projName}</div>
+    <div style="display:flex;align-items:center;gap:14px">
+      ${logoUrl?`<img src="${logoUrl}" style="height:44px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:4px 8px" alt="Logo" />`:''}
+      <div>
+        <div class="title">NON-CONFORMANCE REPORT</div>
+        <div class="sub">${company}${projName&&company?' — ':' '}${projName}</div>
+      </div>
     </div>
     <div class="ncr-ref">${ncrRef}</div>
   </div>
@@ -1249,17 +1266,20 @@ function exportNCR(obs, photoUrls){
   <div class="sign-row">
     <div class="sign-cell">
       <div class="meta-label">Issued By (HSE)</div>
-      <div style="margin-top:4px;font-size:11px">${obs.reporter_name||''}</div>
+      <div style="margin-top:4px;font-size:11px">${obs.reporter_name||'Kindness Njoku'}</div>
+      ${sigPreparedBy?`<div style="margin:6px 0"><img src="${sigPreparedBy}" style="max-height:50px;max-width:160px;object-fit:contain" alt="Signature" /></div>`:'<div style="height:50px"></div>'}
       <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: ${issuedDate}</div>
     </div>
     <div class="sign-cell">
       <div class="meta-label">Responsible Person / Supervisor</div>
       <div style="margin-top:4px;font-size:11px">${obs.responsible_person||''}</div>
+      <div style="height:50px"></div>
       <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: _______________</div>
     </div>
     <div class="sign-cell">
       <div class="meta-label">HSE Manager / Verified By</div>
-      <div style="margin-top:4px;font-size:11px">&nbsp;</div>
+      <div style="margin-top:4px;font-size:11px">Abass Afolabi</div>
+      ${sigSubmittedTo?`<div style="margin:6px 0"><img src="${sigSubmittedTo}" style="max-height:50px;max-width:160px;object-fit:contain" alt="Signature" /></div>`:'<div style="height:50px"></div>'}
       <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: _______________</div>
     </div>
   </div>
