@@ -1102,7 +1102,8 @@ async function renderDetail(c,obs){
         <div class="tag-box"><div class="section-label">Timeframe</div><div>${esc(obs.timeframe||'-')}</div></div>
         <div class="tag-box"><div class="section-label">NCR</div><div>${obs.is_ncr?'Yes':'No'}</div></div>
       </div>
-      <div class="section-label">Photos</div>
+      ${obs.is_ncr?`<div style="margin:10px 0 4px"><button class="btn btn-brand" style="padding:9px 16px;font-size:13px" onclick="exportNCRById('${obs.id}')">⬇ Download NCR</button></div>`:''}
+      <div class="section-label" style="margin-top:12px">Photos</div>
       ${photoUrls.length?`<div class="photo-grid">${photoUrls.map((url,i)=>{
         const p=photos[i];
         const delBtn=(canEdit||isAdmin())?`<button onclick="deleteObservationPhoto('${p.id}','${p.file_path}')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Delete photo">×</button>`:'';
@@ -1129,6 +1130,151 @@ async function renderDetail(c,obs){
 }
 
 function closeDetail(){ selectedObservation=null; renderContent(); }
+
+// ── NCR EXPORT ────────────────────────────────────────
+async function exportNCRById(obsId){
+  const obs = observations.find(o=>o.id===obsId) || selectedObservation;
+  if(!obs){ alert('Observation not found.'); return; }
+  const photos = obs.observation_photos || [];
+  const photoUrls = await Promise.all(photos.map(p=>getSignedUrl(p.file_path)));
+  exportNCR(obs, photoUrls.filter(Boolean));
+}
+
+function exportNCR(obs, photoUrls){
+  const proj   = currentProject;
+  const company = proj?.org_name || proj?.name || '';
+  const projName = proj?.name || '';
+  const ncrRef  = obs.ncr_ref || `NCR-${(obs.id||'').toString().slice(-6).toUpperCase()}`;
+  const issuedDate = new Date(obs.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const today   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+
+  const sevColor = { Critical:'#c0392b', High:'#e67e22', Medium:'#2980b9', Low:'#27ae60' }[obs.severity] || '#555';
+
+  const photoSection = (photoUrls||[]).filter(Boolean).slice(0,4).map((url,i)=>`
+    <div style="display:inline-block;margin:4px;vertical-align:top">
+      <img src="${url}" style="width:200px;height:150px;object-fit:cover;border:1px solid #ccc;border-radius:4px" alt="Photo ${i+1}" />
+    </div>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>NCR — ${ncrRef}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:30px}
+  .page{max-width:780px;margin:0 auto}
+  .header-band{background:#1a1a2e;color:#fff;padding:16px 20px;border-radius:4px 4px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .header-band .title{font-size:20px;font-weight:700;letter-spacing:1px}
+  .header-band .sub{font-size:11px;opacity:.8;margin-top:2px}
+  .ncr-ref{font-size:18px;font-weight:700;color:#ffc107}
+  .meta-row{display:flex;gap:0;border:1px solid #ccc;border-top:none}
+  .meta-cell{flex:1;padding:8px 12px;border-right:1px solid #ccc}
+  .meta-cell:last-child{border-right:none}
+  .meta-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:3px}
+  .meta-val{font-size:12px;font-weight:600}
+  .sev-badge{display:inline-block;padding:3px 10px;border-radius:999px;color:#fff;font-size:11px;font-weight:700;background:${sevColor}}
+  .section{border:1px solid #ccc;border-top:none;padding:12px 14px}
+  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px}
+  .body-text{font-size:12px;line-height:1.65;color:#222}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #ccc;border-top:none}
+  .col-cell{padding:10px 14px;border-right:1px solid #ccc}
+  .col-cell:last-child{border-right:none}
+  .sign-row{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #ccc;border-top:none}
+  .sign-cell{padding:12px 14px;border-right:1px solid #ccc;min-height:60px}
+  .sign-cell:last-child{border-right:none}
+  .sign-line{border-top:1px solid #999;margin-top:30px;padding-top:4px;font-size:10px;color:#777}
+  .footer{margin-top:16px;text-align:center;font-size:9px;color:#aaa}
+  @media print{
+    body{padding:10px}
+    @page{size:A4;margin:15mm}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header-band">
+    <div>
+      <div class="title">NON-CONFORMANCE REPORT</div>
+      <div class="sub">${company}${projName&&company?' — ':' '}${projName}</div>
+    </div>
+    <div class="ncr-ref">${ncrRef}</div>
+  </div>
+
+  <!-- META ROW 1 -->
+  <div class="meta-row">
+    <div class="meta-cell"><div class="meta-label">Date Issued</div><div class="meta-val">${issuedDate}</div></div>
+    <div class="meta-cell"><div class="meta-label">Category</div><div class="meta-val">${obs.category||'-'}</div></div>
+    <div class="meta-cell"><div class="meta-label">Location</div><div class="meta-val">${obs.location||'-'}</div></div>
+    <div class="meta-cell"><div class="meta-label">Severity</div><div class="meta-val"><span class="sev-badge">${obs.severity||'-'}</span></div></div>
+    <div class="meta-cell"><div class="meta-label">Status</div><div class="meta-val">${obs.status||'Open'}</div></div>
+  </div>
+
+  <!-- META ROW 2 -->
+  <div class="meta-row">
+    <div class="meta-cell"><div class="meta-label">Raised By</div><div class="meta-val">${obs.reporter_name||'-'}</div></div>
+    <div class="meta-cell"><div class="meta-label">Responsible Person</div><div class="meta-val">${obs.responsible_person||'-'}</div></div>
+    <div class="meta-cell"><div class="meta-label">Required Closeout By</div><div class="meta-val">${obs.timeframe||'As directed'}</div></div>
+    <div class="meta-cell" style="flex:2"><div class="meta-label">Regulatory Framework</div><div class="meta-val">ADOSH-SF CoP / UAE Federal Law No. 8 of 1980</div></div>
+  </div>
+
+  <!-- DESCRIPTION -->
+  <div class="section">
+    <div class="section-title">1. Description of Non-Conformance</div>
+    <div class="body-text">${(obs.description||'No description provided.').replace(/\n/g,'<br/>')}</div>
+  </div>
+
+  <!-- RECOMMENDED ACTION -->
+  <div class="section">
+    <div class="section-title">2. Required Corrective Action</div>
+    <div class="body-text">${(obs.recommendation||'No corrective action specified.').replace(/\n/g,'<br/>')}</div>
+  </div>
+
+  <!-- CLOSEOUT ACTION (if closed) -->
+  ${obs.closeout_action?`<div class="section">
+    <div class="section-title">3. Closeout Action Taken</div>
+    <div class="body-text">${obs.closeout_action.replace(/\n/g,'<br/>')}</div>
+  </div>`:'<div class="section"><div class="section-title">3. Closeout Action Taken</div><div class="body-text" style="color:#aaa;font-style:italic">Pending — not yet closed.</div></div>'}
+
+  <!-- PHOTOS -->
+  ${photoSection?`<div class="section">
+    <div class="section-title">4. Photographic Evidence</div>
+    <div>${photoSection}</div>
+  </div>`:'<div class="section"><div class="section-title">4. Photographic Evidence</div><div class="body-text" style="color:#aaa;font-style:italic">No photos attached.</div></div>'}
+
+  <!-- SIGNATURES -->
+  <div class="section-title" style="border:1px solid #ccc;border-top:none;padding:8px 14px;background:#f9f9f9;font-size:10px;font-weight:700;text-transform:uppercase;color:#555">5. Signatures</div>
+  <div class="sign-row">
+    <div class="sign-cell">
+      <div class="meta-label">Issued By (HSE)</div>
+      <div style="margin-top:4px;font-size:11px">${obs.reporter_name||''}</div>
+      <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: ${issuedDate}</div>
+    </div>
+    <div class="sign-cell">
+      <div class="meta-label">Responsible Person / Supervisor</div>
+      <div style="margin-top:4px;font-size:11px">${obs.responsible_person||''}</div>
+      <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: _______________</div>
+    </div>
+    <div class="sign-cell">
+      <div class="meta-label">HSE Manager / Verified By</div>
+      <div style="margin-top:4px;font-size:11px">&nbsp;</div>
+      <div class="sign-line">Signature &nbsp;&nbsp;&nbsp; Date: _______________</div>
+    </div>
+  </div>
+
+  <div class="footer">Generated by FLAGIT HSE Platform · ${today} · ${ncrRef} · This document is confidential and for project use only.</div>
+</div>
+<script>window.onload=function(){ window.print(); }</script>
+</body>
+</html>`;
+
+  const win = window.open('','_blank','width=900,height=700');
+  if(!win){ alert('Pop-up blocked — please allow pop-ups for this site and try again.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
 
 // ── PROJECT LOGO UPLOAD (admin only) ──────────────────
 async function uploadProjectLogo(input){
