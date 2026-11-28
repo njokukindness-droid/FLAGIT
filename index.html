@@ -732,10 +732,34 @@ async function hydrateUserAndProjects(){
   const res=await db.from('project_members').select('project_id,full_name,role_title,is_admin,projects(id,name,slug)').eq('user_id',currentUser.id);
   if(res.error) throw res.error;
   myProjects=(res.data||[]).map(r=>({id:r.projects.id,name:r.projects.name,slug:r.projects.slug,role_title:r.role_title,full_name:r.full_name,is_admin:r.is_admin}));
+  // Cache project list for offline use
+  try{ localStorage.setItem(`flagit:projects:${currentUser.id}`, JSON.stringify(myProjects)); }catch(e){}
 }
 
 async function startApp(projectId){
-  await hydrateUserAndProjects();
+  try{
+    await hydrateUserAndProjects();
+  } catch(e){
+    // Offline or network error — try cached project list
+    try{
+      const {data:{session}}=await db.auth.getSession();
+      if(!session) throw new Error('No session');
+      currentUser=session.user;
+      const cached=localStorage.getItem(`flagit:projects:${currentUser.id}`);
+      if(!cached) throw new Error('No cached projects');
+      myProjects=JSON.parse(cached);
+      // Show offline banner
+      const banner=document.createElement('div');
+      banner.id='offline-banner';
+      banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#D85A30;color:#fff;text-align:center;font-size:13px;font-weight:600;padding:7px;z-index:9999;letter-spacing:0.03em;';
+      banner.textContent='⚠ Offline mode — showing cached data. New observations will sync when connected.';
+      document.body.prepend(banner);
+      // Remove banner when back online
+      window.addEventListener('online', ()=>{ const b=document.getElementById('offline-banner'); if(b) b.remove(); }, {once:true});
+    } catch(e2){
+      throw new Error('Could not load your projects. Please connect to the internet and try again.');
+    }
+  }
   if(!myProjects.length) throw new Error('No project membership found.');
   const last=projectId||localStorage.getItem(`flagit:lastProject:${currentUser.id}`)||myProjects[0].id;
   currentProject=myProjects.find(p=>p.id===last)||myProjects[0];
